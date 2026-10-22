@@ -183,4 +183,14 @@ category: report
 
 未执行：`tinypool 2`（并入 Batch C）、`simple-git 4` / `Electron 41`（Batch C）、Python runtime（Batch B）、dev-only（Batch D）。
 
-> 报告编写时只做 triage；Batch A 已按本报告执行并验证。
+## 十一、执行记录（Batch B）
+
+2026-10-23 已完成 Batch B：
+
+- **运行时已修复**：活动环境为 Python 3.14.7 pm 环境，实际版本 `certifi 2026.10.19`、`PyJWT 2.15.1`、`Pillow 13.0.0`、`anyio 4.14.2`、`aiohttp 3.14.5`、`urllib3 2.8.0`、`httpx2 2.12.0`、`cryptography 50.0.1`；旧 3.11 `venv/` 不参与启动。
+- **源码 pyproject**：`certifi 2026.10.19`、`PyJWT 2.15.1`、`Pillow 13.0.0`、`aiohttp 3.14.5`、`urllib3 >=2.8.0,<3`、`httpx2 2.12.0`、`cryptography 50.0.1`。
+- **锁文件**：使用运行时 uv 0.12.3 重新 `uv lock`，结果 `aiohttp 3.14.5`、`anyio 4.14.2`、`certifi 2026.10.19`、`cryptography 50.0.2`、`httpx2 2.12.0`、`pillow 13.0.0`、`pyjwt 2.15.1`、`tornado 6.5.10`、`urllib3 2.8.0`。
+- **验证**：`uv lock --check` 通过；`hermes doctor` 正常；本地 one-shot 返回 `OK`。
+- **未重建 venv**：活动 pm 环境已满足，重建无收益；遗留 3.11 venv 见 R13。
+
+> Batch A/B 已完成；C/D 待执行。
