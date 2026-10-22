@@ -1,0 +1,4 @@
+name: providers-tools
+version: 1.0.0
+description: "Manage custom model providers and discover local Ollama models from the CLI."
+author: local
