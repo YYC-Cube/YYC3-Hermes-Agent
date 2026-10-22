@@ -170,4 +170,17 @@ category: report
 3. **Batch C**：Electron 41 与 simple-git 4 专项回归。
 4. **Batch D**：dev-only 清理。
 
-> 本报告只做 triage，未修改任何依赖或锁文件。
+## 十、执行记录（Batch A）
+
+2026-10-23 已完成 Batch A：
+
+- 直接依赖：`dompurify 3.4.17`、`vite 8.2.4`、`ui-tui undici 6.28.1`
+- 根 overrides：`shell-quote 1.12.0`、`fast-uri 3.1.8`、`axios 1.20.0`、`joi 18.2.9`、`@xmldom/xmldom 0.8.15 / 0.9.12`、`ip-address 10.7.4`、`js-yaml 4.3.2`、`undici 7.30.0 / 6.28.1`、`brace-expansion 5.0.11`、`dompurify 3.4.17`
+- website overrides：`shell-quote 1.12.0`、`proxy-addr 2.0.8`、`fast-uri 3.1.8`、`joi 17.13.8`、`dompurify 3.4.17`、`nanoid 3.3.18`、`js-yaml 4.3.2`
+- photon sidecar：`undici 7.30.0`
+- 锁文件：根锁重新生成，website / photon 定点更新
+- 验证：`npm ci` ×3、`npm ls`、Desktop typecheck + vitest + build、website build、ui-tui typecheck、web build、photon syntax check
+
+未执行：`tinypool 2`（并入 Batch C）、`simple-git 4` / `Electron 41`（Batch C）、Python runtime（Batch B）、dev-only（Batch D）。
+
+> 报告编写时只做 triage；Batch A 已按本报告执行并验证。
