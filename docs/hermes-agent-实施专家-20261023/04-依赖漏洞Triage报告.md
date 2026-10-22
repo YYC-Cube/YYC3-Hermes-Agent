@@ -194,4 +194,14 @@ category: report
 - **未重建 venv**：活动 pm 环境已满足，重建无收益；遗留 3.11 venv 见 R13。
 - **推送后告警**：328 → 211（npm 关闭 117 条）；Python 清单的 `updated_at` 尚未变化，等待 GitHub 重新扫描。
 
-> Batch A/B 已完成；C/D 待执行。
+## 十二、执行记录（Batch C）
+
+2026-10-23 已完成 Batch C：
+
+- **Electron**：`40.10.2 → 41.10.6`；`electron --version` 返回 `v41.10.6`；Desktop build 与 `node-pty` 加载通过。
+- **simple-git**：`3.36.0 → 4.0.2`；新增 `@simple-git/argv-parser 2.0.1`；回移运行时已适配的 `git-review-ops.ts` 与 `no-console-git.ts`；`git-review-ops.test.ts` 9 passed。
+- **tinypool**：website `1.1.1 → 2.2.0`；website build 通过。
+- **验证**：Desktop typecheck/build、lint 0 errors；全量 vitest 10708 passed，4 个既有/环境失败（voice-prefs 断言、managed-ssh exit 127、pool-spawn 5s 超时）。
+- **告警**：211 → **94**（5 critical / 36 high）；剩余 5 条 critical 为 simple-git / argv-parser / tinypool 旧告警，等待 npm 清单重扫。
+
+> Batch A/B/C 已完成；D 待执行。
