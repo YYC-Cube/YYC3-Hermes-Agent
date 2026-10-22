@@ -204,8 +204,7 @@ export function CustomEndpointsSettings({ onConfigSaved, onMainModelChanged }: C
         setForm(current => ({
           ...current,
           baseUrl: resolved && resolved !== current.baseUrl.trim().replace(/\/+$/, '') ? resolved : current.baseUrl,
-          contextLength:
-            current.contextLength || (best?.context_length ? String(best.context_length) : ''),
+          contextLength: current.contextLength || (best?.context_length ? String(best.context_length) : ''),
           model: current.model || best?.id || response.models[0] || ''
         }))
 
@@ -239,6 +238,7 @@ export function CustomEndpointsSettings({ onConfigSaved, onMainModelChanged }: C
       id: form.id.trim() || 'local-ollama',
       name: form.name.trim() || 'Local Ollama'
     }
+
     setForm(next)
     setTesting(true)
 
@@ -259,6 +259,7 @@ export function CustomEndpointsSettings({ onConfigSaved, onMainModelChanged }: C
           kind: response.reachable ? 'warning' : 'error',
           message: response.message || 'Ollama scan failed.'
         })
+
         return
       }
 
