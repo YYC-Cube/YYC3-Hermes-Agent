@@ -192,5 +192,6 @@ category: report
 - **锁文件**：使用运行时 uv 0.12.3 重新 `uv lock`，结果 `aiohttp 3.14.5`、`anyio 4.14.2`、`certifi 2026.10.19`、`cryptography 50.0.2`、`httpx2 2.12.0`、`pillow 13.0.0`、`pyjwt 2.15.1`、`tornado 6.5.10`、`urllib3 2.8.0`。
 - **验证**：`uv lock --check` 通过；`hermes doctor` 正常；本地 one-shot 返回 `OK`。
 - **未重建 venv**：活动 pm 环境已满足，重建无收益；遗留 3.11 venv 见 R13。
+- **推送后告警**：328 → 211（npm 关闭 117 条）；Python 清单的 `updated_at` 尚未变化，等待 GitHub 重新扫描。
 
 > Batch A/B 已完成；C/D 待执行。
