@@ -230,19 +230,43 @@ category: report
 - **无修复版本（接受风险，均 dev-only 或构建期）**：`http-cache-semantics 4.2.0`、`@electron-internal/extract-zip 1.0.5`、`braces 3.0.3`。不作为运行时依赖，等待上游发布修复或随大版本自然消解。
 - **告警**：代码侧已无 Batch D 目标；最终计数以 GitHub Dependabot 重扫为准（npm 清单重扫存在延迟）。
 
-### Batch D 后残留（建议 Batch E，均为 medium/low）
+## 十四、执行记录（Batch E）
 
-| 包 | 告警 | 目标版本 | 范围 |
+2026-10-23 已完成 Batch E（medium/low 收尾）：
+
+| 包 | 范围 | 变更 | 方式 |
 | --- | --- | --- | --- |
-| sanitize-html | medium ×3 | 2.18.0 | 根 runtime |
-| qs | medium ×2 | 6.16.0 | website runtime |
-| postcss-selector-parser | medium ×2 | 7.1.6 | website runtime |
-| colord | medium ×2 | 2.9.4 | website runtime |
-| katex | low ×4 | 0.18.2 | website runtime |
-| music-metadata | medium ×2 | 11.16.0 | whatsapp-bridge runtime |
-| vitest | medium ×5 | 4.1.11 | web dev |
-| @vitest/mocker | medium ×2 | 4.1.12 | 根 dev |
-| h2 / hpack / mcp / multidict / oauthlib / opentelemetry-api | medium ×7 | 4.4.1 / 4.2.0 / 2.2.0 / 6.9.1 / 4.0.0 / 1.45.1 | uv.lock |
-| electron | medium ×10 / low ×6 | 42.11.3 / 42.11.1 | 根 dev（需 42 大版本，暂缓） |
+| sanitize-html | 根 runtime | 2.17.6 → 2.18.0 | override + npm 解析 |
+| colord | 根 / website | 2.9.3 → 2.9.4 | override + npm 解析 |
+| postcss | 根 | 8.5.23 → 8.5.31 | override（满足 sanitize-html 2.18 的 `^8.5.27`） |
+| qs | website | 6.15.3 → 6.16.0 | override + npm 解析 |
+| postcss-selector-parser | website | 6.1.4 / 7.1.4 → 7.1.6 | override + npm 解析（嵌套条目合并） |
+| music-metadata | whatsapp-bridge | 11.15.0 → 11.16.0 | override + npm 解析 |
+| vitest | 根 / web / desktop / ui-tui / tests-js | 4.1.10 → 4.1.12 | devDependency 统一 |
+| @vitest/mocker | 根 | 4.1.10 → 4.1.12 | override |
+| h2 | Python 锁 | 4.3.0 → 4.4.1 | `uv lock --upgrade-package` |
+| hpack | Python 锁 | 4.1.0 → 4.2.0 | `uv lock --upgrade-package` |
+| multidict | Python 锁 | 6.7.1 → 6.9.1 | `uv lock --upgrade-package multidict==6.9.1`（不取 7.0 大版本） |
 
-> Batch A/B/C/D 均已完成；剩余待办为 Dependabot 重扫复核、Batch E（medium/low）与 T4/T6–T11/T13。
+- **npm 冷却门禁**：上述包多为近 14 天发布，已在 `.npmrc` 按既有惯例加入 `min-release-age-exclude`（sanitize-html、qs、postcss-selector-parser、music-metadata、vitest、`@vitest/*`），并注明满两周后移除。
+- **锁文件**：根 / website / whatsapp-bridge 三套 npm 锁更新；`uv.lock` 仅 h2 / hpack / multidict 三条。
+- **验证**：根、website、whatsapp-bridge `npm ci` 通过；根 `npm ls` 全部 deduped、无 invalid；Desktop 与 web `typecheck` 通过；ui-tui `typecheck` 通过；website `typecheck` + `build:fast` 通过；whatsapp `node --check` 通过；`uv lock --check` 通过。
+- **测试**：web vitest 49 文件 / 346 tests 全通过；Desktop UI 908 文件 / 8349 tests，2 条既有 voice-prefs 断言失败；Desktop platform 208 文件 / 2383 tests，2 条既有失败（managed-ssh exit 127、pool-spawn 5s 超时）。与 Batch C 基线一致，无新增失败。
+- **运行时**：pm 环境未安装 h2 / hpack / multidict（可选依赖未启用），不存在运行时暴露。
+- **暂缓项（风险或 pin 约束）**：
+  - `katex 0.16.47 → 0.18.2`：4 条 low；所有依赖方声明 `^0.16`，跨两个 minor 强推有渲染回归风险，保留观察。
+  - `oauthlib 3.3.1 → 4.0.0`：medium；主版本升级影响 google-auth-oauthlib 授权链，需专项回归后再动。
+  - `mcp 2.0.0 → 2.2.0`：medium；`pyproject.toml` 明确 pin 2.0.0（MCP revision 2026-07-28 兼容性），不随告警盲升。
+  - `opentelemetry-api 1.39.1 → 1.45.1`：medium；与 `opentelemetry-sdk==1.39.1` 版本绑定，单独升级会破坏 OTLP extra。
+  - `electron 42.11.x`：medium ×10 / low ×6；Batch C 刚完成 40 → 41，暂不做第二次大版本跳跃。
+
+### Batch E 后残留
+
+| 包 | 告警 | 处置 |
+| --- | --- | --- |
+| katex | low ×4 | 观察（上游 semver 未跟上） |
+| oauthlib / mcp / opentelemetry-api | medium ×4 | 需专项回归或等待上游约束放宽 |
+| electron | medium ×10 / low ×6 | 暂缓至 Electron 42 专项 |
+| http-cache-semantics / extract-zip / braces | high / high / high | 无修复版本，接受风险 |
+
+> Batch A/B/C/D/E 均已完成；剩余待办为 Dependabot 重扫复核与 T4/T6–T11/T13。
