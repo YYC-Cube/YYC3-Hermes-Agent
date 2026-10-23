@@ -39,6 +39,8 @@ interface IndexMeta {
   totalSkills?: number;
   externalSource?: string;
   bySource?: Record<string, number>;
+  /** Per-source catalog shards; the small curated shard loads first. */
+  shards?: { name: string; file: string; count: number; priority?: number }[];
 }
 const indexMeta: IndexMeta = {};
 
@@ -480,8 +482,8 @@ const PAGE_SIZE = 60;
 // `static/api/` ends up at `/docs/api/`. Hardcoding here is fine because the
 // same `baseUrl` is enforced repo-wide; if it ever changes, this is the only
 // place that needs to follow.
-const SKILLS_URL = "/docs/api/skills.json";
-const META_URL = "/docs/api/skills-meta.json";
+const API_BASE = "/docs/api/";
+const META_URL = `${API_BASE}skills-meta.json`;
 
 function buildSearchHaystack(s: Skill): string {
   // Pre-compute the lowercase blob the search filter scans. Done once at
@@ -536,6 +538,12 @@ export default function SkillsDashboard() {
   // mount from the same CDN that serves the docs.
   const [data, setData] = useState<{ skills: Skill[]; meta: IndexMeta } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // The two huge community shards are not fetched on first paint. They load
+  // when the user asks (button, source pill, or a search query).
+  const [pendingShards, setPendingShards] = useState<
+    NonNullable<IndexMeta["shards"]>
+  >([]);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const [search, setSearch] = useState("");
   // Debounced copy of `search` — used by the filter. Without the debounce,
@@ -555,21 +563,41 @@ export default function SkillsDashboard() {
     let cancelled = false;
     (async () => {
       try {
-        const [sk, mt] = await Promise.all([
-          fetch(SKILLS_URL).then((r) => {
-            if (!r.ok) throw new Error(`skills.json HTTP ${r.status}`);
-            return r.json();
-          }),
-          fetch(META_URL).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
-        ]);
-        if (cancelled) return;
-        const skillsArr = Array.isArray(sk) ? (sk as Skill[]) : [];
-        // Stamp the precomputed search haystack onto each row.
-        for (const s of skillsArr) s._search = buildSearchHaystack(s);
-        setData({ skills: skillsArr, meta: mt || {} });
+        const mt = await fetch(META_URL)
+          .then((r) => (r.ok ? r.json() : {}))
+          .catch(() => ({}));
+        const meta = (mt || {}) as IndexMeta;
+        // New meta lists per-source shards. Older builds only have the
+        // monolithic skills.json, so fall back to it unchanged.
+        const shards =
+          Array.isArray(meta.shards) && meta.shards.length
+            ? [...meta.shards].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
+            : [{ name: "all", file: "skills.json", count: 0, priority: 0 }];
+        const initial = shards.filter((s) => (s.priority ?? 0) === 0);
+        const deferred = shards.filter((s) => (s.priority ?? 0) !== 0);
+        const firstPaint = initial.length ? initial : shards.slice(0, 1);
+        const acc: Skill[] = [];
+        for (const shard of firstPaint) {
+          if (cancelled) return;
+          const url = /^https?:\/\//.test(shard.file)
+            ? shard.file
+            : `${API_BASE}${shard.file}`;
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`${shard.file} HTTP ${resp.status}`);
+          const arr = await resp.json();
+          const rows = Array.isArray(arr) ? (arr as Skill[]) : [];
+          // Stamp the precomputed search haystack onto each row.
+          for (const s of rows) {
+            s._search = buildSearchHaystack(s);
+            acc.push(s);
+          }
+        }
+        if (!cancelled) {
+          setData({ skills: acc, meta });
+          setPendingShards(deferred);
+        }
       } catch (err) {
-        if (cancelled) return;
-        setLoadError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : String(err));
       }
     })();
     return () => {
@@ -577,12 +605,48 @@ export default function SkillsDashboard() {
     };
   }, []);
 
+  const loadCommunity = useCallback(async () => {
+    if (loadingMore || !pendingShards.length) return;
+    setLoadingMore(true);
+    const acc = [...(data?.skills ?? [])];
+    const meta = data?.meta ?? indexMeta;
+    for (const shard of pendingShards) {
+      const url = /^https?:\/\//.test(shard.file)
+        ? shard.file
+        : `${API_BASE}${shard.file}`;
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`${shard.file} HTTP ${resp.status}`);
+        const arr = await resp.json();
+        const rows = Array.isArray(arr) ? (arr as Skill[]) : [];
+        for (const s of rows) {
+          s._search = buildSearchHaystack(s);
+          acc.push(s);
+        }
+        setData({ skills: acc.slice(), meta });
+      } catch (err) {
+        // A failed community shard must not blank the curated catalog.
+        console.warn(`[skills] shard ${shard.file} failed`, err);
+      }
+    }
+    setPendingShards([]);
+    setLoadingMore(false);
+  }, [loadingMore, pendingShards, data]);
+
   // Debounce the search input — 150ms feels instant while preventing the
   // filter from running on every individual keystroke.
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 150);
     return () => clearTimeout(t);
   }, [search]);
+
+  // Searching is an explicit request to cover every registry, so pull the
+  // deferred community shards then instead of on first paint.
+  useEffect(() => {
+    if (debouncedSearch && pendingShards.length && !loadingMore) {
+      void loadCommunity();
+    }
+  }, [debouncedSearch, pendingShards.length, loadingMore, loadCommunity]);
 
   const allSkillsLocal: Skill[] = data?.skills ?? [];
   const indexMetaLocal: IndexMeta = data?.meta ?? indexMeta;
@@ -604,8 +668,11 @@ export default function SkillsDashboard() {
 
   const sources = useMemo(() => {
     const set = new Set(allSkillsLocal.map((s) => s.source));
+    // Show every registry from meta even before its shard has streamed in,
+    // so source counts don't jump around while the big shards load.
+    for (const src of Object.keys(indexMetaLocal.bySource || {})) set.add(src);
     return SOURCE_ORDER.filter((s) => s === "all" || set.has(s));
-  }, [allSkillsLocal]);
+  }, [allSkillsLocal, indexMetaLocal]);
 
   const categoryEntries = useMemo(() => {
     const pool =
@@ -655,8 +722,11 @@ export default function SkillsDashboard() {
     (src: string) => {
       setSourceFilter(src);
       setCategoryFilter("all");
+      if (src !== "all" && pendingShards.some((s) => s.name === src)) {
+        void loadCommunity();
+      }
     },
-    []
+    [pendingShards, loadCommunity]
   );
 
   const handleCategoryClick = useCallback((cat: string) => {
@@ -784,8 +854,9 @@ export default function SkillsDashboard() {
               const conf = SOURCE_CONFIG[src];
               const count =
                 src === "all"
-                  ? allSkillsLocal.length
-                  : allSkillsLocal.filter((s) => s.source === src).length;
+                  ? indexMetaLocal.totalSkills ?? allSkillsLocal.length
+                  : indexMetaLocal.bySource?.[src] ??
+                    allSkillsLocal.filter((s) => s.source === src).length;
               return (
                 <button
                   key={src}
@@ -897,12 +968,31 @@ export default function SkillsDashboard() {
               </div>
             )}
 
+            {pendingShards.length > 0 && (
+              <div className={styles.filterSummary}>
+                <span className={styles.filterCount}>
+                  Curated catalog loaded: {allSkillsLocal.length.toLocaleString()} skills.{" "}
+                  {pendingShards
+                    .reduce((n, s) => n + s.count, 0)
+                    .toLocaleString()}{" "}
+                  community skills available.
+                </span>
+                <button
+                  className={styles.clearAllBtn}
+                  onClick={() => void loadCommunity()}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? "Loading…" : "Load community catalog"}
+                </button>
+              </div>
+            )}
+
             {!data && !loadError ? (
               <div className={styles.empty}>
                 <div className={styles.loadingSpinner} />
                 <h3 className={styles.emptyTitle}>Loading the catalog…</h3>
                 <p className={styles.emptyDesc}>
-                  Fetching 88k+ skills across every registry. One moment.
+                  Loading the curated catalog first, then the community shards.
                 </p>
               </div>
             ) : visible.length > 0 ? (

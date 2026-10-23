@@ -128,11 +128,13 @@ mini-swe-agent/
 .nix-stamps/
 result
 website/static/api/skills-index.json
-# skills.json + skills-meta.json are build artifacts emitted by
-# website/scripts/extract-skills.py during prebuild — keep them out of
-# git for the same reason as skills-index.json (large, generated, change
-# every build).
+# The unified skills index is a BUILD INPUT, not a site asset. Keep it in
+# website/.cache/ so the 40MB+ catalog is never published.
+website/.cache/
+# skills.json + skills-<source>.json + skills-meta.json are build artifacts
+# emitted by website/scripts/extract-skills.py during prebuild.
 website/static/api/skills.json
+website/static/api/skills-*.json
 website/static/api/skills-meta.json
 # plugins.json + plugins-meta.json are build artifacts emitted by
 # website/scripts/extract-plugins.py during prebuild (Plugin Catalog page).
@@ -153,6 +155,10 @@ models-dev-upstream/
 .mcp.json
 opencode.json
 config/mcporter.json
+.mimosa/
+.trae-html-share-packages/
+.v2c/
+.video_agent/
 
 hermes_cli/tui_dist/*
 hermes_cli/scripts/

@@ -20,6 +20,7 @@ the unified index existed).
 
 import json
 import os
+import re
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -30,14 +31,21 @@ LOCAL_SKILL_DIRS = [
     ("skills", "built-in"),
     ("optional-skills", "optional"),
 ]
-UNIFIED_INDEX_PATH = os.path.join(REPO_ROOT, "website", "static", "api", "skills-index.json")
+STATIC_API_DIR = os.path.join(REPO_ROOT, "website", "static", "api")
+# The unified index is a BUILD INPUT, not a site asset: keep it in .cache/ so
+# the 40MB+ catalog is not shipped to every visitor. The legacy static path is
+# still read when present for older checkouts.
+UNIFIED_INDEX_CACHE_PATH = os.path.join(REPO_ROOT, "website", ".cache", "skills-index.json")
+UNIFIED_INDEX_LEGACY_PATH = os.path.join(STATIC_API_DIR, "skills-index.json")
+UNIFIED_INDEX_PATH = UNIFIED_INDEX_CACHE_PATH
 LEGACY_INDEX_CACHE_DIR = os.path.join(REPO_ROOT, "skills", "index-cache")
-# Output to static/api/ so the file is CDN-served at /api/skills.json
-# rather than bundled into the page's JS chunk. At 50k+ skills the
-# bundled payload was ~26 MB; lazy-fetch keeps the initial page load
-# fast and shrinks the JS chunk back to a few hundred KB.
-OUTPUT = os.path.join(REPO_ROOT, "website", "static", "api", "skills.json")
-META_OUTPUT = os.path.join(REPO_ROOT, "website", "static", "api", "skills-meta.json")
+# Output to static/api/ so the files are CDN-served at /api/skills.json
+# rather than bundled into the page's JS chunk. The catalog is sharded by
+# source: the small curated shard loads first, the two huge community
+# registries stream in after first paint.
+OUTPUT = os.path.join(STATIC_API_DIR, "skills.json")
+META_OUTPUT = os.path.join(STATIC_API_DIR, "skills-meta.json")
+SHARD_MIN_SKILLS = 5000
 
 CATEGORY_LABELS = {
     "apple": "Apple",
@@ -350,11 +358,15 @@ def extract_unified_index_skills():
     index file is absent or malformed (caller falls back to the legacy
     cache).
     """
-    if not os.path.isfile(UNIFIED_INDEX_PATH):
+    index_path = next(
+        (p for p in (UNIFIED_INDEX_PATH, UNIFIED_INDEX_LEGACY_PATH) if os.path.isfile(p)),
+        None,
+    )
+    if index_path is None:
         return None, None
 
     try:
-        with open(UNIFIED_INDEX_PATH, encoding="utf-8") as f:
+        with open(index_path, encoding="utf-8") as f:
             data = json.load(f)
     except (json.JSONDecodeError, OSError) as e:
         print(f"[extract-skills] Failed to read unified index: {e}")
@@ -646,15 +658,33 @@ def main():
         s["name"],
     ))
 
-    os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
-    with open(OUTPUT, "w", encoding="utf-8") as f:
-        # Minified — file is served over the wire, not read by humans.
-        # At 50k+ skills the indented version was ~30% larger.
-        json.dump(all_skills, f, separators=(",", ":"), ensure_ascii=False)
+    os.makedirs(STATIC_API_DIR, exist_ok=True)
+    by_source = Counter(s["source"] for s in all_skills)
+
+    # Shard the two huge community registries out of the first-paint payload.
+    # Everything else (curated + small taps) stays in skills.json so the page
+    # can render a useful catalog before the community shards arrive.
+    shard_sources = {src for src, count in by_source.items() if count >= SHARD_MIN_SKILLS}
+
+    def _write_shard(path, rows):
+        with open(path, "w", encoding="utf-8") as f:
+            # Minified — file is served over the wire, not read by humans.
+            json.dump(rows, f, separators=(",", ":"), ensure_ascii=False)
+
+    core = [s for s in all_skills if s["source"] not in shard_sources]
+    _write_shard(OUTPUT, core)
+    shards = [{"name": "core", "file": os.path.basename(OUTPUT),
+               "count": len(core), "priority": 0}]
+    for src in sorted(shard_sources, key=lambda s: -by_source[s]):
+        slug = re.sub(r"[^a-z0-9]+", "-", src.lower()).strip("-") or "shard"
+        filename = f"skills-{slug}.json"
+        rows = [s for s in all_skills if s["source"] == src]
+        _write_shard(os.path.join(STATIC_API_DIR, filename), rows)
+        shards.append({"name": src, "file": filename,
+                       "count": len(rows), "priority": 1})
 
     # Sidecar meta file so the page can render a "Last refreshed" badge
-    # without changing the shape of skills.json.
-    by_source = Counter(s["source"] for s in all_skills)
+    # and load each shard lazily without changing the shape of a shard.
     meta = {
         "extractedAt": datetime.now(timezone.utc).isoformat(),
         "totalSkills": len(all_skills),
@@ -662,13 +692,18 @@ def main():
         "externalSkills": len(external),
         "externalSource": external_source,
         "bySource": dict(by_source.most_common()),
+        "shards": shards,
     }
     if index_meta:
         meta.update(index_meta)
     with open(META_OUTPUT, "w", encoding="utf-8") as f:
         json.dump(meta, f, separators=(",", ":"), ensure_ascii=False)
 
-    print(f"Extracted {len(all_skills)} skills to {OUTPUT}")
+    print(f"Extracted {len(all_skills)} skills to {STATIC_API_DIR}")
+    for shard in shards:
+        path = os.path.join(STATIC_API_DIR, shard["file"])
+        print(f"  shard {shard['name']}: {shard['count']} skills, "
+              f"{os.path.getsize(path) / 1024 / 1024:.1f} MB -> {path}")
     print(f"  {len(local)} local ({sum(1 for s in local if s['source'] == 'built-in')} built-in, "
           f"{sum(1 for s in local if s['source'] == 'optional')} optional)")
     print(f"  {len(external)} from {external_source}")

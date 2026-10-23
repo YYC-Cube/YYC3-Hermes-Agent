@@ -104,7 +104,7 @@ jobs:
           # collapse, keeping the last good Pages deployment live instead of
           # publishing a degenerate catalog.
           set -euo pipefail
-          INDEX_PATH="website/static/api/skills-index.json"
+          INDEX_PATH="website/.cache/skills-index.json"
           mkdir -p "$(dirname "$INDEX_PATH")"
 
           validate_index() {
