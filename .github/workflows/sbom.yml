@@ -1,0 +1,63 @@
+name: SBOM
+
+# CycloneDX SBOMs for the release artifact: Python (from uv.lock via
+# scripts/generate_sbom.py) and npm (from the installed tree). Archived on
+# every main push; attached to GitHub Releases when one is published.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbom-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sbom:
+    name: CycloneDX (Python + npm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # 10.3.0
+        with:
+          # Pinned: unpinned setup-uv fetches a 'latest' manifest from
+          # raw.githubusercontent.com every job; transient fetch failures
+          # fail the job (2026-07-28 incident). Keep in sync with tests.yml.
+          version: "0.9.28"
+
+      - name: Generate Python SBOM
+        run: |
+          mkdir -p dist/sbom
+          python3 scripts/generate_sbom.py --uv-lock uv.lock --output dist/sbom/python-cyclonedx.json
+
+      # npm sbom validates the INSTALLED tree, not just the lockfile, so a
+      # clean install is required first. --ignore-scripts: the root postinstall
+      # is a no-op echo and lifecycle scripts must not run on a CI-only lane.
+      - name: Install npm tree
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Generate npm SBOM
+        run: |
+          npm sbom --sbom-format cyclonedx > dist/sbom/npm-cyclonedx.json
+          node -e "const b=JSON.parse(require('fs').readFileSync('dist/sbom/npm-cyclonedx.json','utf8'));if(b.bomFormat!=='CycloneDX'||!(b.components?.length>0))throw new Error('invalid npm SBOM')"
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbom-cyclonedx
+          path: dist/sbom/
+
+      - name: Attach SBOMs to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/sbom/*.json --clobber
