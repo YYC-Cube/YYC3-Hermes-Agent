@@ -204,4 +204,45 @@ category: report
 - **验证**：Desktop typecheck/build、lint 0 errors；全量 vitest 10708 passed，4 个既有/环境失败（voice-prefs 断言、managed-ssh exit 127、pool-spawn 5s 超时）。
 - **告警**：211 → **94**（5 critical / 36 high）；剩余 5 条 critical 为 simple-git / argv-parser / tinypool 旧告警，等待 npm 清单重扫。
 
-> Batch A/B/C 已完成；D 待执行。
+## 十三、执行记录（Batch D）
+
+2026-10-23 已完成 Batch D（dev-only 与边缘运行时）：
+
+| 包 | 范围 | 变更 | 方式 |
+| --- | --- | --- | --- |
+| follow-redirects | 根 / website | 1.16.0 → 1.16.1 | override + npm 解析 |
+| browserslist | 根 / website | 4.28.6 → 4.28.7 | override + npm 解析 |
+| baseline-browser-mapping | 根 / website | 2.10.43 → 2.11.28 | browserslist 连带 |
+| electron-to-chromium | website | 1.5.392 → 1.5.451 | browserslist 连带 |
+| source-map-js | 根 / website | 1.2.1 → 1.2.2 | override + npm 解析 |
+| brace-expansion | 根 / website | 5.0.9（website）/ 5.0.11（根）→ 5.0.12 | override + npm 解析 |
+| launch-editor | website | 2.14.1 → 2.14.2 | override + npm 解析 |
+| compression | website | 1.8.1 → 1.8.2 | override + npm 解析 |
+| svgo | website | 3.3.4 → 3.3.5 | override + npm 解析 |
+| @grpc/grpc-js | photon sidecar | 1.14.4 → 1.14.5 | override + npm 解析 |
+| sharp | whatsapp-bridge | 0.35.4 → 0.35.5 | override + npm 解析（24 个 `@img/*` 平台包同步；libvips 1.3.3 → 1.3.4） |
+| fsspec | Python 锁 | 2026.2.0 → 2026.9.0 | `uv lock --upgrade-package fsspec` |
+
+- **锁文件**：四套 npm 锁（根 / website / photon / whatsapp-bridge）均由 npm 解析更新，无手工 patch；`uv.lock` 仅 fsspec 一条变更。
+- **验证**：四个 npm 工程 `npm ci --dry-run` 通过；website、photon、whatsapp-bridge 实际 `npm ci` 通过并安装到目标版本；根 `npm ci` 干净安装通过，Electron 41.10.6 二进制完好。
+- **构建**：website `typecheck` 0 errors、`build:fast` 成功；Desktop `typecheck` 通过；photon `index.mjs` 与 whatsapp `bridge.js` `node --check` 通过。
+- **顺带修复**：website 类型门禁在 TS 6 下已失效（`baseUrl` 弃用、`JSX` 命名空间缺失、JSON 模块未启用）。已在 `website/tsconfig.json` 补 `baseUrl` / `ignoreDeprecations` / `resolveJsonModule`，并在两个组件补 `import type { JSX } from 'react'`。
+- **无修复版本（接受风险，均 dev-only 或构建期）**：`http-cache-semantics 4.2.0`、`@electron-internal/extract-zip 1.0.5`、`braces 3.0.3`。不作为运行时依赖，等待上游发布修复或随大版本自然消解。
+- **告警**：代码侧已无 Batch D 目标；最终计数以 GitHub Dependabot 重扫为准（npm 清单重扫存在延迟）。
+
+### Batch D 后残留（建议 Batch E，均为 medium/low）
+
+| 包 | 告警 | 目标版本 | 范围 |
+| --- | --- | --- | --- |
+| sanitize-html | medium ×3 | 2.18.0 | 根 runtime |
+| qs | medium ×2 | 6.16.0 | website runtime |
+| postcss-selector-parser | medium ×2 | 7.1.6 | website runtime |
+| colord | medium ×2 | 2.9.4 | website runtime |
+| katex | low ×4 | 0.18.2 | website runtime |
+| music-metadata | medium ×2 | 11.16.0 | whatsapp-bridge runtime |
+| vitest | medium ×5 | 4.1.11 | web dev |
+| @vitest/mocker | medium ×2 | 4.1.12 | 根 dev |
+| h2 / hpack / mcp / multidict / oauthlib / opentelemetry-api | medium ×7 | 4.4.1 / 4.2.0 / 2.2.0 / 6.9.1 / 4.0.0 / 1.45.1 | uv.lock |
+| electron | medium ×10 / low ×6 | 42.11.3 / 42.11.1 | 根 dev（需 42 大版本，暂缓） |
+
+> Batch A/B/C/D 均已完成；剩余待办为 Dependabot 重扫复核、Batch E（medium/low）与 T4/T6–T11/T13。
