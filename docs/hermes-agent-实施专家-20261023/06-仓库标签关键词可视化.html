@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YYC3 Hermes Agent · 仓库标签与关键词可视化设计</title>
+<style>
+  :root {
+    --bg: #0b0e1a;
+    --bg-soft: #111528;
+    --card: #151a30;
+    --card-edge: #232b4a;
+    --ink: #e8ecf8;
+    --ink-dim: #9aa3c0;
+    --brand: #7c6cff;
+    --brand-2: #22d3ee;
+    --amber: #fbbf24;
+    --emerald: #34d399;
+    --rose: #fb7185;
+    --mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background:
+      radial-gradient(900px 420px at 15% -5%, rgba(124,108,255,.22), transparent 60%),
+      radial-gradient(800px 400px at 90% 0%, rgba(34,211,238,.12), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "PingFang SC", "Segoe UI", "Noto Sans SC", sans-serif;
+    line-height: 1.65;
+    padding: 48px 20px 80px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  a { color: var(--brand-2); text-decoration: none; }
+
+  header { text-align: center; margin-bottom: 40px; }
+  .banner {
+    width: 100%; border-radius: 16px; display: block;
+    border: 1px solid var(--card-edge);
+    box-shadow: 0 18px 60px rgba(124,108,255,.25);
+  }
+  .banner-fallback {
+    display: none; width: 100%; aspect-ratio: 4/1; border-radius: 16px;
+    background: linear-gradient(120deg, #1a1140 0%, #2b1d6e 45%, #0e3a52 100%);
+    border: 1px solid var(--card-edge);
+    align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 800; letter-spacing: .06em;
+  }
+  header h1 { font-size: 30px; margin: 28px 0 6px; letter-spacing: .02em; }
+  header h1 .caduceus { color: var(--brand); }
+  .slogan { color: var(--ink-dim); font-size: 14px; }
+  .slogan b { color: var(--brand-2); font-weight: 600; }
+  .meta { color: #6b7394; font-size: 12.5px; margin-top: 10px; font-family: var(--mono); }
+
+  h2 {
+    font-size: 19px; margin: 44px 0 16px; display: flex; align-items: center; gap: 10px;
+  }
+  h2 .idx {
+    font-family: var(--mono); font-size: 12px; color: var(--brand);
+    border: 1px solid rgba(124,108,255,.45); border-radius: 8px; padding: 2px 9px;
+    background: rgba(124,108,255,.10);
+  }
+
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  /* GitHub About 侧栏仿真 */
+  .gh-card {
+    background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px;
+    padding: 18px 18px 16px; font-size: 13.5px;
+  }
+  .gh-card .label { color: var(--ink-dim); font-weight: 600; margin-bottom: 8px; display: flex; gap: 7px; align-items: center; }
+  .gh-card .desc { margin-bottom: 14px; }
+  .gh-card .row { display: flex; gap: 8px; align-items: center; color: var(--ink-dim); margin-bottom: 8px; font-size: 13px; }
+  .gh-card .row svg { flex: none; }
+  .topics { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .topic {
+    font-size: 11.5px; font-weight: 600; color: #4493f8; cursor: default;
+    background: rgba(56,139,253,.12); border: 1px solid rgba(56,139,253,.35);
+    border-radius: 999px; padding: 1px 10px 2px; transition: .15s;
+  }
+  .topic:hover { background: rgba(56,139,253,.25); transform: translateY(-1px); }
+
+  /* 分类分组 chips */
+  .groups { display: grid; gap: 14px; }
+  .group {
+    background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px; padding: 14px 16px;
+  }
+  .group-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; align-self: center; }
+  .group-head .name { font-weight: 700; font-size: 14.5px; }
+  .group-head .en { color: var(--ink-dim); font-size: 12px; font-family: var(--mono); }
+  .group-head .count { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--ink-dim); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-family: var(--mono); font-size: 12.5px; padding: 5px 12px; border-radius: 999px;
+    background: var(--bg-soft); border: 1px solid var(--card-edge); color: var(--ink);
+    transition: .15s;
+  }
+  .chip:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+  .g-brand   .dot { background: var(--brand); }   .g-brand   .chip { border-color: rgba(124,108,255,.5); }
+  .g-core    .dot { background: var(--brand-2); } .g-core    .chip { border-color: rgba(34,211,238,.4); }
+  .g-cap     .dot { background: var(--amber); }    .g-cap     .chip { border-color: rgba(251,191,36,.4); }
+  .g-eco     .dot { background: var(--emerald); } .g-eco     .chip { border-color: rgba(52,211,153,.4); }
+  .g-stack   .dot { background: var(--rose); }    .g-stack   .chip { border-color: rgba(251,113,133,.4); }
+
+  /* 关键词卡片 */
+  .kw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 860px) { .kw-grid { grid-template-columns: 1fr; } }
+  .kw-card { background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px; padding: 18px; }
+  .kw-card h3 { font-size: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .kw-card h3 .flag { font-size: 17px; }
+  .kw-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: baseline; }
+  .kw-row .k {
+    flex: none; width: 52px; text-align: center; font-size: 11.5px; font-weight: 700;
+    border-radius: 6px; padding: 1px 0; color: var(--bg);
+  }
+  .k1 { background: var(--brand); } .k2 { background: var(--brand-2); }
+  .k3 { background: var(--emerald); } .k4 { background: var(--amber); }
+  .kw-row .v { font-size: 13px; color: var(--ink-dim); }
+  .kw-row .v code { font-family: var(--mono); font-size: 12px; color: var(--ink); background: var(--bg-soft); padding: 1px 5px; border-radius: 4px; }
+
+  /* 复制块 */
+  .copy-block { position: relative; background: #0d1020; border: 1px solid var(--card-edge); border-radius: 12px; padding: 16px 18px; }
+  .copy-block pre { font-family: var(--mono); font-size: 12.5px; color: #c3cdec; white-space: pre-wrap; word-break: break-all; }
+  .copy-btn {
+    position: absolute; top: 10px; right: 10px; font-size: 11.5px; cursor: pointer;
+    color: var(--ink-dim); background: var(--card); border: 1px solid var(--card-edge);
+    border-radius: 7px; padding: 4px 12px; transition: .15s;
+  }
+  .copy-btn:hover { color: var(--ink); border-color: var(--brand); }
+  .copy-btn.ok { color: var(--emerald); border-color: var(--emerald); }
+
+  footer { margin-top: 56px; text-align: center; color: #6b7394; font-size: 12.5px; }
+  footer .line { margin: 4px 0; }
+  footer b { color: var(--ink-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <img class="banner" src="../../pubilc/yyc3-family.png" alt="YYC3 Hermes Agent Family Banner"
+         onerror="this.style.display='none';document.querySelector('.banner-fallback').style.display='flex'">
+    <div class="banner-fallback">YYC3 · Hermes Agent</div>
+    <h1>仓库标签与关键词 <span class="caduceus">☤</span> 可视化设计</h1>
+    <p class="slogan"><b>言启象限 · 语枢未来</b> — Words Initiate Quadrants, Language Serves as Core for Future</p>
+    <p class="meta">YYC-Cube/YYC3-Hermes-Agent · 20/20 topics · homepage https://h-agent.yyc3.vip · 2026-10-23</p>
+  </header>
+
+  <h2><span class="idx">01</span>GitHub About 侧栏 · 落地效果仿真</h2>
+  <div class="grid">
+    <aside class="gh-card">
+      <div class="label">About
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6b7394"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM7 5a1 1 0 112 0v3a1 1 0 11-2 0V5zm1 8a1.25 1.25 0 110-2.5A1.25 1.25 0 018 13z"/></svg>
+      </div>
+      <p class="desc">YYC³ Hermes Agent — a local-first, self-improving AI agent with skills, memory, multi-channel gateway, scheduled automation, and model-agnostic provider support.</p>
+      <div class="row">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6b7394"><path d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"/></svg>
+        h-agent.yyc3.vip
+      </div>
+      <div class="row">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6b7394"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zM1.5 8a6.5 6.5 0 0113 0 6.5 6.5 0 01-13 0zM8 3.25a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5zM3.5 13a4.5 4.5 0 019 0 .75.75 0 01-.27.57c-1.13.93-2.53 1.43-4.23 1.43s-3.1-.5-4.23-1.43A.75.75 0 013.5 13z"/></svg>
+        MIT license
+      </div>
+      <div class="row">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6b7394"><path d="M8 1.5l6.5 16h-2.31L8 4.75 3.81 17.5H1.5L8 1.5z" transform="scale(.85)"/></svg>
+        Readme
+      </div>
+      <div class="topics" id="gh-topics"></div>
+    </aside>
+
+    <div class="groups" id="groups"><!-- JS 填充 --></div>
+  </div>
+
+  <h2><span class="idx">02</span>SEO 关键词矩阵</h2>
+  <div class="kw-grid">
+    <div class="kw-card">
+      <h3><span class="flag">🇬🇧</span>English Keywords</h3>
+      <div class="kw-row"><span class="k k1">核心</span><span class="v"><code>self-improving AI agent</code> <code>local-first AI agent</code> <code>model-agnostic LLM agent</code></span></div>
+      <div class="kw-row"><span class="k k2">能力</span><span class="v"><code>skills and memory</code> <code>tool calling</code> <code>autonomous task automation</code> <code>multi-agent delegation</code></span></div>
+      <div class="kw-row"><span class="k k3">集成</span><span class="v"><code>Ollama</code> <code>OpenAI-compatible</code> <code>MCP</code> <code>Telegram</code> <code>Discord</code> <code>Slack</code> <code>WhatsApp</code> <code>Electron</code></span></div>
+      <div class="kw-row"><span class="k k4">工程</span><span class="v"><code>plugin architecture</code> <code>prompt caching</code> <code>context compression</code> <code>cron scheduler</code></span></div>
+    </div>
+    <div class="kw-card">
+      <h3><span class="flag">🇨🇳</span>中文关键词</h3>
+      <div class="kw-row"><span class="k k1">核心</span><span class="v">自我进化智能体 · 本地优先 · 模型无关 · 开源 AI Agent</span></div>
+      <div class="kw-row"><span class="k k2">能力</span><span class="v">技能与记忆 · 工具调用 · 自主任务 · 多智能体委派</span></div>
+      <div class="kw-row"><span class="k k3">集成</span><span class="v">Ollama 本地模型 · OpenAI 兼容接口 · MCP · 飞书/微信/Telegram</span></div>
+      <div class="kw-row"><span class="k k4">工程</span><span class="v">插件架构 · 提示缓存 · 上下文压缩 · 定时任务</span></div>
+    </div>
+  </div>
+
+  <h2><span class="idx">03</span>直接复制 · Topics 配置块</h2>
+  <div class="copy-block">
+    <button class="copy-btn" data-copy="topics-block">Copy</button>
+    <pre id="topics-block">hermes-agent yyc3 ai-agent autonomous-agents self-improving llm agent-framework mcp ollama local-first multi-agent tool-calling openai-compatible telegram-bot discord-bot slack-bot electron python typescript cron</pre>
+  </div>
+  <div style="height:14px"></div>
+  <div class="copy-block">
+    <button class="copy-btn" data-copy="desc-block">Copy</button>
+    <pre id="desc-block">YYC³ Hermes Agent — a local-first, self-improving AI agent with skills, memory, multi-channel gateway, scheduled automation, and model-agnostic provider support.</pre>
+  </div>
+
+  <footer>
+    <p class="line"><b>YYC3 Hermes Agent</b> · 言启象限 | 语枢未来 · 万象归元于云枢 | 深栈智启新纪元</p>
+    <p class="line">Words Initiate Quadrants, Language Serves as Core for Future · All things converge in cloud pivot; Deep stacks ignite a new era of intelligence</p>
+    <p class="line">© 2025-2026 YanYuCloudCube™ · <a href="https://h-agent.yyc3.vip">h-agent.yyc3.vip</a> · <a href="https://github.com/YYC-Cube/YYC3-Hermes-Agent">GitHub</a></p>
+  </footer>
+</div>
+
+<script>
+  // 20 topics × 5 分类（与 03-仓库标签与关键词.md 权威清单一致）
+  const GROUPS = [
+    { cls: 'g-brand',  name: '品牌身份', en: 'Brand',      items: ['hermes-agent', 'yyc3'] },
+    { cls: 'g-core',   name: '核心智能', en: 'Core AI',    items: ['ai-agent', 'autonomous-agents', 'self-improving', 'llm', 'agent-framework'] },
+    { cls: 'g-cap',    name: '能力引擎', en: 'Capability', items: ['multi-agent', 'tool-calling', 'mcp', 'cron'] },
+    { cls: 'g-eco',    name: '集成生态', en: 'Ecosystem',  items: ['ollama', 'openai-compatible', 'local-first', 'telegram-bot', 'discord-bot', 'slack-bot', 'electron'] },
+    { cls: 'g-stack',  name: '工程栈',   en: 'Stack',      items: ['python', 'typescript'] },
+  ];
+  const groupsEl = document.getElementById('groups');
+  GROUPS.forEach(g => {
+    const div = document.createElement('div');
+    div.className = 'group ' + g.cls;
+    div.innerHTML = `<div class="group-head"><span class="dot"></span><span class="name">${g.name}</span><span class="en">${g.en}</span><span class="count">${g.items.length}/20</span></div>
+      <div class="chips">${g.items.map(t => `<span class="chip">${t}</span>`).join('')}</div>`;
+    groupsEl.appendChild(div);
+  });
+  document.getElementById('gh-topics').innerHTML =
+    GROUPS.flatMap(g => g.items).map(t => `<span class="topic">${t}</span>`).join('');
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById(btn.dataset.copy).innerText).then(() => {
+        btn.textContent = 'Copied ✓'; btn.classList.add('ok');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1600);
+      });
+    });
+  });
+</script>
+</body>
+</html>

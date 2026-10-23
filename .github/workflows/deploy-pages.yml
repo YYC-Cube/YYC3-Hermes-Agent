@@ -1,6 +1,6 @@
 name: Deploy Pages
 
-# Fork deployment for https://agent.yyc3.vip (GitHub Pages + custom domain).
+# Fork deployment for https://h-agent.yyc3.vip (GitHub Pages + custom domain).
 # The upstream deploy-site.yml is gated to NousResearch/hermes-agent (Vercel +
 # GitHub App token + scheduled skills-index crawl); this workflow is the fork
 # counterpart: plain GITHUB_TOKEN, live upstream skills index (no crawl), and
@@ -108,6 +108,10 @@ jobs:
           # Custom domain: the CNAME file must sit at the artifact root or
           # GitHub Pages drops the domain binding on every deploy.
           cp pubilc/CNAME _site/CNAME
+          # Landing page: the offline single-file operations hub replaces the
+          # Docusaurus root document (which now lives at /docs). It must be a
+          # byte-for-byte copy so the deployed entry matches the data source.
+          cp pubilc/YYC3-HERMES-HUB-OFFLINE.html _site/index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3

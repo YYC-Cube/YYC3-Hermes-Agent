@@ -1,13 +1,16 @@
 <p align="center">
-  <img src="assets/banner.png" alt="YYC3 Hermes Agent" width="100%">
+  <img src="pubilc/yyc3-family.png" alt="YYC3 Hermes Agent" width="100%">
 </p>
 
 # YYC3 Hermes Agent ☤
 <p align="center">
-  <a href="https://agent.yyc3.vip/">YYC3 Docs &amp; Dashboard</a> | <a href="https://hermes-agent.nousresearch.com/">Upstream: Hermes Agent</a>
+  <i>言启象限 · 语枢未来 — Words Initiate Quadrants, Language Serves as Core for Future</i>
 </p>
 <p align="center">
-  <a href="https://agent.yyc3.vip/"><img src="https://img.shields.io/badge/Docs-agent.yyc3.vip-0969DA?style=for-the-badge" alt="YYC3 Docs"></a>
+  <a href="https://h-agent.yyc3.vip/">YYC3 HUB</a> | <a href="https://h-agent.yyc3.vip/docs">Docs</a> | <a href="https://hermes-agent.nousresearch.com/">Upstream: Hermes Agent</a>
+</p>
+<p align="center">
+  <a href="https://h-agent.yyc3.vip/docs"><img src="https://img.shields.io/badge/Docs-h--agent.yyc3.vip-0969DA?style=for-the-badge" alt="YYC3 Docs"></a>
   <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
   <a href="https://discord.gg/NousResearch"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://github.com/NousResearch/hermes-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>

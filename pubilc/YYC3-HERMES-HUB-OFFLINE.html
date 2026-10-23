@@ -1,0 +1,1783 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YYC3 Hermes Agent · 操作中心</title>
+<meta name="description" content="YYC3 Hermes Agent 离线操作中心：本地起步、站点部署、品牌资产与治理安全，一处查全。">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c6cff'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='45' font-family='-apple-system,sans-serif' font-size='38' font-weight='700' fill='%23ffffff' text-anchor='middle'%3EY%3C/text%3E%3C/svg%3E">
+<style>
+/* ═══════════ 设计系统 · CSS 变量 ═══════════ */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --bg:#0a0a0f; --bg2:#12121a; --bg3:#1a1a2e;
+  --surface:rgba(255,255,255,.03); --surface-hover:rgba(255,255,255,.06);
+  --border:rgba(255,255,255,.08); --border-hover:rgba(255,255,255,.15);
+  --text:#f1f1f6; --text2:rgba(255,255,255,.65); --text3:rgba(255,255,255,.35);
+  --accent-v:#7c6cff; --accent-c:#22d3ee;
+  --accent-e:#22c55e; --accent-r:#ef4444;
+  --radius:14px; --radius-sm:8px; --shadow:0 4px 24px rgba(0,0,0,.3);
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  --font-mono:'SF Mono','Fira Code','Cascadia Code','JetBrains Mono','Consolas',monospace;
+  --sb-w:280px;
+}
+.light{
+  --bg:#f5f6fb; --bg2:#ffffff; --bg3:#eceef8;
+  --surface:rgba(10,10,15,.03); --surface-hover:rgba(10,10,15,.06);
+  --border:rgba(10,10,15,.10); --border-hover:rgba(10,10,15,.20);
+  --text:#12121a; --text2:rgba(10,10,15,.66); --text3:rgba(10,10,15,.42);
+  --shadow:0 4px 24px rgba(10,10,15,.10);
+}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--font); font-size:15px; line-height:1.62;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+h1,h2,h3,h4,p,ul,ol{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+code,pre{font-family:var(--font-mono);font-size:12.5px}
+::selection{background:rgba(124,108,255,.32)}
+*{scrollbar-width:thin;scrollbar-color:rgba(140,140,160,.35) transparent}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(140,140,160,.35);border-radius:3px}
+::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--accent-c);outline-offset:2px;border-radius:6px}
+
+/* ═══════════ 侧边栏 M1 ═══════════ */
+.sidebar{
+  position:fixed; top:0; bottom:0; left:0; width:var(--sb-w); z-index:40;
+  display:flex; flex-direction:column; gap:14px; padding:18px 14px 10px;
+  background:var(--bg2); border-right:1px solid var(--border);
+  transition:transform .3s ease;
+}
+.sidebar.hidden{transform:translateX(-100%)}
+.brand{display:flex;align-items:center;gap:10px;cursor:pointer;padding:2px 4px;border-radius:var(--radius-sm)}
+.brand-logo{
+  width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  font-weight:800;font-size:19px;color:#fff;flex:none;
+  background:linear-gradient(135deg,var(--accent-v),var(--accent-c));
+  box-shadow:0 4px 14px rgba(124,108,255,.35);
+}
+.brand-text{min-width:0}
+.brand-name{font-size:14.5px;font-weight:700;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-sub{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-search{position:relative}
+.sb-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2}
+.sb-search input{
+  width:100%;padding:8px 10px 8px 32px;border-radius:var(--radius-sm);
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+  font-family:inherit;font-size:13px;outline:none;transition:border-color .2s;
+}
+.sb-search input:focus{border-color:var(--accent-c)}
+.sb-progress{padding:0 4px}
+.sb-progress-head{display:flex;align-items:baseline;gap:8px;font-size:11.5px;color:var(--text3);margin-bottom:6px}
+.sb-progress-head span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-progress-head b{color:var(--text2);font-weight:600;font-family:var(--font-mono);flex:none}
+.sb-progress-head b:last-child{color:var(--accent-c)}
+.sb-bar{height:5px;border-radius:3px;background:var(--surface-hover);overflow:hidden}
+.sb-bar span{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--accent-v),var(--accent-c));transition:width .35s ease}
+.sb-nav{flex:1;overflow-y:auto;padding:2px 2px 14px;margin:0 -2px}
+.sb-group{margin-bottom:14px}
+.sb-cat{display:flex;align-items:center;gap:7px;padding:0 6px 6px;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--text3)}
+.sb-cat-dot{width:8px;height:8px;border-radius:50%;flex:none}
+.sb-cat-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-cat-n{margin-left:auto;font-family:var(--font-mono);font-size:10.5px;opacity:.8}
+.sb-item{
+  display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--radius-sm);
+  font-size:13px;color:var(--text2);transition:background .18s,color .18s;cursor:pointer;
+}
+.sb-item:hover{background:var(--surface-hover);color:var(--text)}
+.sb-item.active{background:var(--surface-hover);color:var(--text);box-shadow:inset 2px 0 0 var(--accent-c)}
+.sb-dot{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--border-hover);flex:none}
+.sb-item.done .sb-dot{background:var(--accent-e);border-color:var(--accent-e)}
+.sb-idx{font-family:var(--font-mono);font-size:11px;color:var(--text3);flex:none;min-width:16px}
+.sb-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-tail{margin-left:auto;font-size:10.5px;color:var(--text3);flex:none}
+.sb-ext{margin-left:auto;font-size:11px;color:var(--text3);flex:none}
+.sb-foot{font-size:10.5px;color:var(--text3);padding:8px 6px 4px;border-top:1px solid var(--border);line-height:1.5}
+.scrim{display:none;position:fixed;inset:0;z-index:35;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)}
+
+/* ═══════════ 顶栏 M2 ═══════════ */
+.main{margin-left:var(--sb-w);min-height:100vh;display:flex;flex-direction:column;transition:margin-left .3s ease}
+.main.expanded{margin-left:0}
+.topbar{
+  position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;
+  padding:9px 20px;border-bottom:1px solid var(--border);
+  background:var(--bg2);
+  background:color-mix(in srgb,var(--bg) 74%,transparent);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+}
+.icon-btn{
+  width:34px;height:34px;border-radius:var(--radius-sm);display:grid;place-items:center;
+  color:var(--text2);border:1px solid transparent;transition:background .18s,color .18s,border-color .18s;
+}
+.icon-btn:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border)}
+.icon-btn.danger:hover{color:var(--accent-r);border-color:rgba(239,68,68,.4)}
+.icon-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon-btn.flash{color:var(--accent-e);border-color:var(--accent-e)}
+.lang-btn{width:auto;display:flex;gap:5px;padding:0 9px}
+.lang-tag{font-size:10.5px;font-family:var(--font-mono);letter-spacing:.4px;color:var(--text2)}
+.lang-btn:hover .lang-tag{color:var(--text)}
+.top-title{min-width:0;display:flex;flex-direction:column}
+.top-title h1{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+.top-title span{font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+.top-search{position:relative;flex:1;max-width:340px;margin-left:6px;display:none}
+.main.expanded .top-search{display:block}
+.top-search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2}
+.top-search input{width:100%;padding:7px 10px 7px 30px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:12.5px;outline:none}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:4px}
+.clock{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:12px;color:var(--text2);padding:0 8px}
+.clock i{width:6px;height:6px;border-radius:50%;background:var(--accent-e);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(34,197,94,.5)}50%{opacity:.55;box-shadow:0 0 0 5px rgba(34,197,94,0)}}
+
+/* ═══════════ 内容区 ═══════════ */
+.content{width:100%;max-width:1400px;margin:0 auto;padding:26px 24px 60px;flex:1}
+
+/* ═══════════ 仪表盘 M3 ═══════════ */
+.hero{margin-bottom:22px}
+.badge{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;
+  font-size:11.5px;font-weight:600;letter-spacing:.3px;color:var(--accent-c);
+  background:rgba(34,211,238,.10);border:1px solid rgba(34,211,238,.24);
+}
+.hero h2{font-size:clamp(22px,3.2vw,32px);font-weight:800;letter-spacing:-.4px;margin:12px 0 8px;line-height:1.25;text-wrap:balance}
+.hero p{color:var(--text2);max-width:760px;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0 22px}
+.stat{
+  padding:14px 16px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--surface);position:relative;overflow:hidden;
+}
+.stat::after{content:'';position:absolute;inset:auto 0 0 0;height:2px;background:linear-gradient(90deg,var(--accent-v),var(--accent-c));opacity:.55}
+.stat b{display:block;font-size:26px;font-weight:800;font-family:var(--font-mono);line-height:1.1}
+.stat span{font-size:11.5px;color:var(--text3)}
+.filters{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:22px}
+.filter-btn{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+  font-size:12.5px;color:var(--text2);border:1px solid var(--border);background:var(--surface);
+  transition:border-color .18s,color .18s,background .18s;
+}
+.filter-btn:hover{border-color:var(--border-hover);color:var(--text)}
+.filter-btn.active{
+  color:var(--cat-color,var(--accent-v));
+  border-color:var(--cat-color,var(--accent-v));
+  background:color-mix(in srgb,var(--cat-color,var(--accent-v)) 14%,transparent);
+}
+.filter-btn .f-dot{width:7px;height:7px;border-radius:50%;background:var(--cat-color,var(--accent-v));flex:none}
+.cat-section{margin-bottom:26px}
+.cat-head{display:flex;align-items:center;gap:9px;padding-bottom:8px;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.cat-ico{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:13px;flex:none;background:var(--surface-hover)}
+.cat-name{font-size:14px;font-weight:700}
+.cat-count{font-size:11px;color:var(--text3);font-family:var(--font-mono)}
+.cat-meter{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);font-family:var(--font-mono)}
+.cat-meter i{display:block;width:74px;height:3px;border-radius:2px;background:var(--surface-hover);overflow:hidden}
+.cat-meter i b{display:block;height:100%;width:0;background:var(--cat-color,var(--accent-v));transition:width .35s ease}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+
+/* ═══════════ 条目卡片 M4 ═══════════ */
+.gcard{
+  position:relative;padding:16px 16px 14px;border-radius:var(--radius);
+  border:1px solid var(--border);background:var(--surface);cursor:pointer;overflow:hidden;
+  transition:transform .22s ease,border-color .22s ease,background .22s ease;
+  animation:fadeUp .45s ease both;animation-delay:calc(var(--i,0)*38ms);
+  display:flex;flex-direction:column;gap:9px;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.gcard:hover{transform:translateY(-2px);border-color:var(--border-hover);background:var(--surface-hover)}
+.gc-bar{position:absolute;inset:0 0 auto 0;height:3px;background:var(--cat-color,var(--accent-v))}
+.gc-badge{
+  position:absolute;top:12px;right:14px;font-size:10.5px;font-family:var(--font-mono);
+  padding:2px 7px;border-radius:999px;color:var(--text2);
+  background:var(--surface-hover);border:1px solid var(--border);
+}
+.gc-badge.full{color:var(--accent-e);border-color:rgba(34,197,94,.35)}
+.gc-head{display:flex;align-items:flex-start;gap:10px;padding-right:58px}
+.gc-ico{
+  width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:15px;flex:none;
+  background:var(--surface-hover);
+  background:color-mix(in srgb,var(--cat-color,var(--accent-v)) 16%,transparent);
+}
+.gc-title{font-size:14px;font-weight:700;line-height:1.4;letter-spacing:.1px}
+.gc-meta{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--text3);flex-wrap:wrap}
+.gc-meta .dm{color:var(--text2)}
+.gc-desc{font-size:12.5px;color:var(--text2);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:39px}
+.gc-tags{display:flex;gap:5px;flex-wrap:wrap}
+.gc-tag{font-size:10.5px;padding:2px 7px;border-radius:5px;background:var(--surface-hover);color:var(--text3);border:1px solid var(--border)}
+.gc-steps{border-top:1px dashed var(--border);padding-top:9px;display:flex;flex-direction:column;gap:4px}
+.gc-steps-h{font-size:10.5px;color:var(--text3);letter-spacing:.4px;text-transform:uppercase}
+.gc-step{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text2);padding:2px 0;border-radius:4px}
+.gc-step:hover{color:var(--text)}
+.gc-step .n{font-family:var(--font-mono);font-size:10px;color:var(--text3);flex:none}
+.gc-step.sd .n{color:var(--accent-e)}
+.gc-step .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gc-more{font-size:11.5px;color:var(--accent-c);font-weight:600;padding:2px 0}
+.gc-more:hover{text-decoration:underline}
+.done-circle{
+  position:absolute;top:14px;right:14px;width:0;height:0;opacity:0;pointer-events:none;
+}
+.gc-done{
+  position:absolute;bottom:12px;right:16px;width:22px;height:22px;border-radius:50%;
+  border:1.5px solid var(--border-hover);display:grid;place-items:center;
+  font-size:11px;color:transparent;transition:all .2s;background:transparent;
+}
+.gcard:hover .gc-done{border-color:var(--accent-e)}
+.gc-done.on{background:var(--accent-e);border-color:var(--accent-e);color:#fff}
+.gcard.is-done{border-color:rgba(34,197,94,.30)}
+.gcard.is-done .gc-title{color:var(--text2)}
+
+/* ═══════════ 详情页 M5 ═══════════ */
+.back{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text3);margin-bottom:16px;padding:4px 0}
+.back:hover{color:var(--accent-c)}
+.d-hero{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px}
+.d-icon{
+  width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:21px;flex:none;
+  background:var(--surface-hover);
+  background:color-mix(in srgb,var(--cat-color,var(--accent-v)) 18%,transparent);
+  border:1px solid color-mix(in srgb,var(--cat-color,var(--accent-v)) 32%,transparent);
+}
+.d-hero h2{font-size:clamp(19px,2.6vw,25px);font-weight:800;letter-spacing:-.3px;line-height:1.3}
+.d-hero p{font-size:13px;color:var(--text2);margin-top:6px;max-width:820px}
+.d-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pill{font-size:11px;padding:3px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--border);color:var(--text2)}
+.pill.cat{color:var(--cat-color,var(--accent-v));border-color:color-mix(in srgb,var(--cat-color,var(--accent-v)) 34%,transparent)}
+.pbar-wrap{margin:18px 0 22px}
+.pbar-head{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text3);margin-bottom:6px;font-family:var(--font-mono)}
+.pbar{height:6px;border-radius:3px;background:var(--surface-hover);overflow:hidden}
+.pbar span{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--accent-v),var(--accent-c));transition:width .35s ease}
+.block-h{font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;font-weight:600}
+.prereq{list-style:none;padding:0;display:flex;flex-direction:column;gap:5px;margin-bottom:22px}
+.prereq li{font-size:12.5px;color:var(--text2);display:flex;gap:7px;align-items:flex-start}
+.prereq li::before{content:'▸';color:var(--accent-c);flex:none}
+.steps{display:flex;flex-direction:column;gap:9px}
+.step{
+  border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);
+  overflow:hidden;transition:border-color .2s,background .2s;
+}
+.step:hover{border-color:var(--border-hover)}
+.step.is-danger{border-color:rgba(239,68,68,.35)}
+.step-head{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;user-select:none}
+.step-dot{
+  width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;
+  font-size:10.5px;font-family:var(--font-mono);color:var(--text2);
+  border:1.5px solid var(--border-hover);background:transparent;transition:all .2s;
+}
+.step-dot:hover{border-color:var(--accent-e)}
+.step.is-done .step-dot{background:var(--accent-e);border-color:var(--accent-e);color:#fff}
+.step-title{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step.is-done .step-title{color:var(--text2);text-decoration:line-through;text-decoration-color:var(--text3)}
+.step-time{font-size:10.5px;color:var(--text3);font-family:var(--font-mono);flex:none}
+.step-caret{font-size:9px;color:var(--text3);flex:none;transition:transform .2s}
+.step.is-open .step-caret{transform:rotate(90deg)}
+.step-body{display:none;padding:0 14px 14px 44px;flex-direction:column;gap:10px}
+.step.is-open .step-body{display:flex}
+.step-body p{font-size:12.5px;color:var(--text2);line-height:1.65}
+.code-block{
+  border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;background:var(--bg3);background:color-mix(in srgb,var(--bg3) 60%,var(--bg2));
+}
+.code-head{display:flex;align-items:center;gap:8px;padding:5px 8px 5px 10px;border-bottom:1px solid var(--border);background:var(--surface)}
+.code-lang{font-size:10px;color:var(--text3);font-family:var(--font-mono);letter-spacing:.6px;text-transform:uppercase}
+.copy-btn{margin-left:auto;font-size:10.5px;color:var(--text2);padding:2px 8px;border-radius:5px;border:1px solid var(--border);transition:all .18s}
+.copy-btn:hover{color:var(--accent-c);border-color:var(--accent-c)}
+.copy-btn.ok{color:var(--accent-e);border-color:var(--accent-e)}
+.code-block pre{margin:0;padding:10px 12px;overflow-x:auto;color:var(--text);line-height:1.65}
+.code-block code{white-space:pre;color:#c9d6ff}
+.light .code-block code{color:#2a3356}
+.note{display:flex;gap:8px;padding:9px 11px;border-radius:var(--radius-sm);font-size:12px;line-height:1.6}
+.note.warn{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.28);color:#fca5a5}
+.note.tip{background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.24);color:#a5f3fc}
+.light .note.warn{color:#b42318}
+.light .note.tip{color:#0e7490}
+.note b{flex:none}
+.step-flash{animation:flashRing 1.6s ease 1}
+@keyframes flashRing{0%,100%{box-shadow:0 0 0 0 rgba(34,211,238,0)}25%,60%{box-shadow:0 0 0 3px rgba(34,211,238,.35)}}
+
+/* ═══════════ 弹窗 M6 ═══════════ */
+.modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:18px}
+.modal.on{display:flex}
+.modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px)}
+.modal-panel{
+  position:relative;width:100%;max-width:560px;max-height:84vh;display:flex;flex-direction:column;
+  background:var(--bg2);border:1px solid var(--border-hover);border-radius:var(--radius);box-shadow:var(--shadow);
+  animation:pop .22s ease both;
+}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+.modal-head{display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.modal-head .mi{font-size:16px;flex:none}
+.modal-head h3{font-size:13.5px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modal-body{overflow-y:auto;padding:8px}
+.m-step{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background .18s}
+.m-step:hover{background:var(--surface-hover)}
+.m-step .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-family:var(--font-mono);border:1.5px solid var(--border-hover);flex:none;color:var(--text3)}
+.m-step.sd .n{background:var(--accent-e);border-color:var(--accent-e);color:#fff}
+.m-step .t{font-size:12.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m-step .tm{font-size:10.5px;color:var(--text3);font-family:var(--font-mono);flex:none}
+.m-step .ck{font-size:10px;color:var(--accent-e);flex:none;width:12px}
+
+/* ═══════════ 技能面板 M7 ═══════════ */
+.sk-cats{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0 20px}
+.sk-cat-btn{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:12.5px;
+  color:var(--text2);border:1px solid var(--border);background:var(--surface);
+}
+.sk-cat-btn .d{width:7px;height:7px;border-radius:50%;background:var(--sk-color,var(--accent-v));flex:none}
+.sk-cat-btn.active{color:var(--sk-color,var(--accent-v));border-color:var(--sk-color,var(--accent-v));background:color-mix(in srgb,var(--sk-color,var(--accent-v)) 14%,transparent)}
+.sk-sec{margin-bottom:22px}
+.sk-sec-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.sk-sec-head .e{font-size:15px}
+.sk-sec-head .n{font-size:13.5px;font-weight:700}
+.sk-stars{font-size:10px;letter-spacing:1px;color:var(--sk-color,var(--accent-v));font-family:var(--font-mono)}
+.sk-sec-head .c{margin-left:auto;font-size:11px;color:var(--text3);font-family:var(--font-mono)}
+.sk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.sk-card{padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);transition:border-color .2s}
+.sk-card:hover{border-color:var(--border-hover)}
+.sk-name{font-size:13px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:7px}
+.sk-name .st{font-size:9.5px;color:var(--sk-color,var(--accent-v));letter-spacing:.5px;font-family:var(--font-mono)}
+.sk-desc{font-size:11.5px;color:var(--text3);line-height:1.55;margin-bottom:9px}
+.sk-cmd{
+  display:block;width:100%;text-align:left;font-family:var(--font-mono);font-size:11.5px;
+  padding:8px 10px;border-radius:6px;background:var(--bg2);border:1px dashed var(--border-hover);
+  color:var(--text2);overflow-x:auto;white-space:pre;transition:all .18s;cursor:pointer;
+}
+.sk-cmd:hover{color:var(--accent-c);border-color:var(--accent-c);background:var(--surface-hover)}
+.sk-hint{font-size:10px;color:var(--text3);margin-top:5px}
+
+/* ═══════════ 全局态 M8 ═══════════ */
+.empty{padding:44px 20px;text-align:center;border:1px dashed var(--border);border-radius:var(--radius);color:var(--text3)}
+.empty h3{font-size:14px;color:var(--text2);margin-bottom:5px}
+.empty p{font-size:12px}
+.loading{position:fixed;inset:0;z-index:80;display:grid;place-items:center;gap:14px;background:var(--bg);transition:opacity .35s ease}
+.loading.gone{opacity:0;pointer-events:none}
+.loading .inner{display:flex;flex-direction:column;align-items:center;gap:12px}
+.spinner{width:26px;height:26px;border-radius:50%;border:2px solid var(--border-hover);border-top-color:var(--accent-c);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{font-size:12px;color:var(--text3)}
+.toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
+.toast{
+  padding:8px 15px;border-radius:999px;font-size:12px;color:var(--text);
+  background:var(--bg3);border:1px solid var(--border-hover);box-shadow:var(--shadow);
+  animation:toastIn .25s ease both;
+}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.err-bar{position:fixed;left:0;right:0;top:0;z-index:95;display:none;align-items:center;gap:10px;padding:9px 16px;background:rgba(239,68,68,.94);color:#fff;font-size:12px}
+.err-bar.on{display:flex}
+.err-bar b{flex:none}
+.err-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.err-bar button{color:#fff;font-size:16px;line-height:1;padding:0 4px}
+.foot{margin-top:38px;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:11.5px;color:var(--text3)}
+.foot a{color:var(--text2);border-bottom:1px solid transparent}
+.foot a:hover{color:var(--accent-c);border-bottom-color:var(--accent-c)}
+.foot .sep{opacity:.5}
+
+/* ═══════════ 响应式 ═══════════ */
+@media (max-width:768px){
+  .sidebar{width:min(300px,84vw);transform:translateX(-100%);box-shadow:var(--shadow)}
+  .sidebar.open{transform:none}
+  .sidebar.hidden{transform:translateX(-100%)}
+  .main,.main.expanded{margin-left:0}
+  .scrim.on{display:block}
+  .topbar{padding:8px 14px}
+  .clock{display:none}
+  .top-title span{display:none}
+  .top-title h1{max-width:42vw}
+  .content{padding:18px 14px 48px}
+  .stats{grid-template-columns:1fr 1fr;gap:9px}
+  .stat:last-child{grid-column:1/-1}
+  .grid{grid-template-columns:1fr}
+  .main.expanded .top-search{display:none}
+  .top-actions{gap:2px}
+}
+@media (max-width:480px){
+  .share-holder{display:none}
+  .content{padding:14px 11px 40px}
+  .hero h2{font-size:20px}
+  .stats{gap:7px}
+  .stat{padding:11px 12px}
+  .stat b{font-size:22px}
+  .step-body{padding-left:16px}
+  .d-hero{gap:10px}
+  .d-icon{width:38px;height:38px;font-size:17px}
+  .top-actions .icon-btn{width:30px;height:30px}
+  .gc-head{padding-right:52px}
+}
+@media (hover:none) and (pointer:coarse){
+  .icon-btn,.filter-btn,.sk-cat-btn,.sk-cmd,.gc-more{min-height:36px}
+  .step-dot{width:36px;height:36px}
+  .gc-step{min-height:30px}
+  .m-step{min-height:40px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  html{scroll-behavior:auto}
+}
+@media print{
+  .sidebar,.topbar,.toasts{display:none}
+  .main{margin-left:0}
+}
+</style>
+</head>
+<body>
+
+<div class="err-bar" id="errBar">
+  <b data-i18n="errTitle">页面出现脚本异常</b>
+  <span id="errMsg"></span>
+  <button type="button" aria-label="Close" data-act="err-close">×</button>
+</div>
+
+<div class="loading" id="loading">
+  <div class="inner">
+    <div class="spinner"></div>
+    <p data-i18n="loading">正在装配操作中心…</p>
+  </div>
+</div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="brand" data-act="home" data-i18n-title="dashboard" role="button" tabindex="0">
+    <div class="brand-logo" aria-hidden="true">Y</div>
+    <div class="brand-text">
+      <div class="brand-name" data-i18n="appName">YYC3 Hermes Agent</div>
+      <div class="brand-sub" data-i18n="appSub">言启象限 · 语枢未来</div>
+    </div>
+  </div>
+
+  <div class="sb-search">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+    <input id="sbSearch" type="search" autocomplete="off" data-i18n-ph="searchPh" placeholder="搜索手册…">
+  </div>
+
+  <div class="sb-progress">
+    <div class="sb-progress-head">
+      <span data-i18n="progressLabel">总进度</span>
+      <b id="sbCount">0/0</b>
+      <b id="sbPct">0%</b>
+    </div>
+    <div class="sb-bar"><span id="sbFill"></span></div>
+  </div>
+
+  <nav class="sb-nav" id="sbNav" aria-label="Playbooks"></nav>
+
+  <div class="sb-foot" data-i18n="footerNote">离线单文件 · 无 CDN · 无埋点</div>
+</aside>
+
+<div class="scrim" id="scrim" data-act="close-drawer"></div>
+
+<main class="main" id="main">
+  <header class="topbar">
+    <button class="icon-btn" type="button" data-act="sb-toggle" data-i18n-title="sbToggle" aria-label="Toggle sidebar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+    <div class="top-title">
+      <h1 id="topTitle" data-i18n="appName">YYC3 Hermes Agent</h1>
+      <span id="topSub" data-i18n="appSub">言启象限 · 语枢未来</span>
+    </div>
+    <div class="top-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <input id="topSearch" type="search" autocomplete="off" data-i18n-ph="searchTopPh" placeholder="搜索手册…">
+    </div>
+    <div class="top-actions">
+      <div class="clock" data-i18n-title="clockLabel"><i aria-hidden="true"></i><span id="clock">--:--:--</span></div>
+      <span class="share-holder">
+        <button class="icon-btn" type="button" id="shareBtn" data-act="share" data-i18n-title="shareBtn" aria-label="Share">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="M8.6 10.6l6.8-4.2M8.6 13.4l6.8 4.2"></path></svg>
+        </button>
+      </span>
+      <button class="icon-btn" type="button" data-act="export" data-i18n-title="exportBtn" aria-label="Export progress">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>
+      </button>
+      <button class="icon-btn" type="button" data-act="import" data-i18n-title="importBtn" aria-label="Import progress">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"></path></svg>
+      </button>
+      <button class="icon-btn danger" type="button" data-act="reset" data-i18n-title="resetBtn" aria-label="Reset progress">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"></path></svg>
+      </button>
+      <button class="icon-btn lang-btn" type="button" id="langBtn" data-act="lang" data-i18n-title="langTitle" aria-label="Switch language">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c3 3.6 3 14.4 0 18M12 3c-3 3.6-3 14.4 0 18"></path></svg>
+        <span class="lang-tag" id="langTag">EN</span>
+      </button>
+      <button class="icon-btn" type="button" id="themeBtn" data-act="theme" data-i18n-title="themeTitle" aria-label="Toggle theme">
+        <svg viewBox="0 0 24 24" aria-hidden="true" id="themeIcon"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="content" id="content"></div>
+</main>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true">
+  <div class="modal-bg" data-act="close-modal"></div>
+  <div class="modal-panel">
+    <div class="modal-head">
+      <span class="mi" id="modalIco" aria-hidden="true">📋</span>
+      <h3 id="modalTitle">—</h3>
+      <button class="icon-btn" type="button" data-act="close-modal" data-i18n-title="close" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<input type="file" id="importFile" accept="application/json,.json" style="display:none">
+
+<script>
+/* ═══════════ 数据块 · 改数据不改代码 ═══════════ */
+/* 分类注册表：色环等距，两两可辨 */
+var CATEGORIES = [
+  { key:'quickstart', emoji:'🚀', zh:'快速上手', en:'Quickstart',   color:'#8b5cf6' },
+  { key:'deploy',     emoji:'☁️', zh:'部署运维', en:'Deploy & Ops', color:'#06b6d4' },
+  { key:'brand',      emoji:'🎨', zh:'品牌资产', en:'Brand Assets', color:'#ec4899' },
+  { key:'governance', emoji:'🛡️', zh:'治理与安全', en:'Governance', color:'#22c55e' },
+  { key:'skills',     emoji:'⌨️', zh:'命令速查', en:'Commands',     color:'#eab308' }
+];
+
+var SKILL_CATS = [
+  { key:'dev',  emoji:'🧑‍💻', zh:'开发',   en:'Development', stars:4, color:'#8b5cf6' },
+  { key:'test', emoji:'🧪', zh:'测试',     en:'Testing',     stars:3, color:'#06b6d4' },
+  { key:'ship', emoji:'📦', zh:'交付',     en:'Shipping',    stars:3, color:'#f97316' },
+  { key:'ops',  emoji:'🔧', zh:'运维',     en:'Operations',  stars:2, color:'#64748b' }
+];
+
+var GUIDES = [
+  {
+    id:'qs01', order:1, cat:'quickstart', icon:'🧰', diff:'easy', time:'15 min',
+    title:'环境准备', titleEn:'Environment Setup',
+    desc:'同步仓库并准备好 Python 虚拟环境与 Node 工具链，让后续所有命令可直接照抄运行。',
+    descEn:'Clone the repo and prepare the Python virtualenv plus the Node toolchain so every later command runs as written.',
+    prereq:[{zh:'可用的 Git 与网络代理',en:'Working Git and network access'}],
+    steps:[
+      { n:1, title:'获取代码', titleEn:'Clone the repo', time:'3 min',
+        content:'克隆主仓库并进入项目根目录，后文所有命令都以该目录为工作路径。',
+        contentEn:'Clone the main repository and enter the project root; every command below assumes this directory.',
+        code:[['bash','git clone https://github.com/YYC-Cube/YYC3-Hermes-Agent.git'],['bash','cd YYC3-Hermes-Agent']],
+        warning:'', tip:'' },
+      { n:2, title:'Python 环境', titleEn:'Python virtualenv', time:'5 min',
+        content:'创建并激活虚拟环境；运行测试或启动 Agent 之前必须先激活。',
+        contentEn:'Create and activate the virtualenv; activate it before running tests or starting the agent.',
+        code:[['bash','python3 -m venv .venv'],['bash','source .venv/bin/activate']],
+        warning:'', tip:'已有 .venv 目录时直接激活即可，不必重复创建。' },
+      { n:3, title:'Node 工具链', titleEn:'Node toolchain', time:'7 min',
+        content:'文档站要求 Node 20 以上、npm 11.17 以上；进入 website 后按锁文件安装依赖。',
+        contentEn:'The docs site needs Node 20+ and npm 11.17+; enter website and install from the lockfile.',
+        code:[['bash','cd website'],['bash','npm ci']],
+        warning:'必须使用 npm ci 而不是 npm install，锁文件需与 CI 保持一致。', tip:'' }
+    ]
+  },
+  {
+    id:'qs02', order:2, cat:'quickstart', icon:'🌐', diff:'easy', time:'10 min',
+    title:'启动文档站', titleEn:'Run Docs Site',
+    desc:'用本地开发服务器预览 Docusaurus 文档站，改动即时热更新，提交前先自查。',
+    descEn:'Preview the Docusaurus docs site locally with hot reload, and self-check before committing.',
+    prereq:[{zh:'已完成 Node 依赖安装',en:'Node dependencies installed'}],
+    steps:[
+      { n:1, title:'启动开发服务器', titleEn:'Start dev server', time:'3 min',
+        content:'端口固定从 3030 起，避免与本地既有服务冲突。',
+        contentEn:'Use port 3030 and up to avoid clashes with services already running locally.',
+        code:[['bash','cd website'],['bash','npm run start -- --port 3030']],
+        warning:'', tip:'首次启动会执行 prebuild 脚本生成技能与插件索引。' },
+      { n:2, title:'类型检查', titleEn:'Typecheck', time:'3 min',
+        content:'TypeScript 全量检查可提前捕获配置与组件层的类型漂移。',
+        contentEn:'A full TypeScript pass catches type drift in config and components early.',
+        code:[['bash','cd website','npm run typecheck']],
+        warning:'', tip:'' },
+      { n:3, title:'生产构建', titleEn:'Production build', time:'4 min',
+        content:'提交前在本地完成一次生产构建，断链与缺失资源会在日志中直接暴露。',
+        contentEn:'Run a production build before committing; broken links and missing assets surface in the log.',
+        code:[['bash','cd website','npm run build']],
+        warning:'', tip:'构建日志里的 broken link 为 warn 级别，需要人工确认是否本次引入。' }
+    ]
+  },
+  {
+    id:'qs03', order:3, cat:'quickstart', icon:'🧪', diff:'medium', time:'20 min',
+    title:'运行测试套件', titleEn:'Run Test Suite',
+    desc:'使用统一测试入口，自动隔离环境变量与工作目录，保证本地与 CI 结果一致。',
+    descEn:'Use the unified test entrypoint; it isolates env vars and workdirs so local results match CI.',
+    prereq:[{zh:'已激活 Python 虚拟环境',en:'Python virtualenv activated'}],
+    steps:[
+      { n:1, title:'全量测试', titleEn:'Full suite', time:'10 min',
+        content:'统一入口会清理凭据变量、固定时区，并把 HERMES_HOME 指向临时目录。',
+        contentEn:'The runner clears credential vars, pins the timezone and points HERMES_HOME at a temp dir.',
+        code:[['bash','scripts/run_tests.sh']],
+        warning:'不要直接调用 pytest，本地环境污染会造成与 CI 不一致的结果。', tip:'' },
+      { n:2, title:'目录级测试', titleEn:'Directory scope', time:'6 min',
+        content:'按目录收敛范围，适合单模块快速迭代。',
+        contentEn:'Narrow the scope by directory for fast single-module iteration.',
+        code:[['bash','scripts/run_tests.sh tests/gateway/']],
+        warning:'', tip:'' },
+      { n:3, title:'单文件过滤', titleEn:'Single file filter', time:'4 min',
+        content:'运行器以文件为粒度，-k 只在该文件内进一步缩小。',
+        contentEn:'The runner is file-granular; -k narrows further within that file.',
+        code:[['bash','scripts/run_tests.sh tests/agent/test_foo.py -k test_x']],
+        warning:'', tip:'失败文件会在新子进程重试一次，重试通过会标记为 FLAKY，仍需修复。' }
+    ]
+  },
+  {
+    id:'dp01', order:1, cat:'deploy', icon:'☁️', diff:'medium', time:'15 min',
+    title:'Pages 自动部署', titleEn:'Pages Auto Deploy',
+    desc:'推送 main 触发 GitHub Actions，构建文档站并把产物发布到 GitHub Pages。',
+    descEn:'Push to main to trigger GitHub Actions, build the docs site and publish the artifact to Pages.',
+    prereq:[{zh:'仓库 Pages 已启用且来源为 Actions',en:'Pages enabled with GitHub Actions as source'}],
+    steps:[
+      { n:1, title:'触发条件', titleEn:'Triggers', time:'2 min',
+        content:'website 目录、pubilc 目录或工作流自身的变更都会触发部署。',
+        contentEn:'Changes under website, under pubilc, or to the workflow itself all trigger a deploy.',
+        code:[['bash','git push origin main']],
+        warning:'', tip:'' },
+      { n:2, title:'构建流水线', titleEn:'Build pipeline', time:'6 min',
+        content:'工作流先复用 skills 索引，再执行 npm ci 与 npm run build，最后装配 _site 产物。',
+        contentEn:'The workflow reuses the skills index, runs npm ci and npm run build, then assembles _site.',
+        code:[['bash','gh run list --workflow deploy-pages.yml']],
+        warning:'', tip:'' },
+      { n:3, title:'产物装配', titleEn:'Artifact staging', time:'7 min',
+        content:'构建结果复制到 _site，CNAME 必须位于产物根目录，站点入口由根 index.html 提供。',
+        contentEn:'The build is copied into _site; CNAME must sit at the artifact root and the entry is root index.html.',
+        code:[['bash','cp -r website/build/* _site/'],['bash','cp pubilc/CNAME _site/CNAME']],
+        warning:'', tip:'部署失败时优先查看 workflow 的 Stage deployment 步骤日志。' }
+    ]
+  },
+  {
+    id:'dp02', order:2, cat:'deploy', icon:'🔗', diff:'medium', time:'20 min',
+    title:'自定义域名', titleEn:'Custom Domain',
+    desc:'绑定 h-agent.yyc3.vip：完成 DNS 解析、CNAME 落盘与 HTTPS 强制三件事。',
+    descEn:'Bind h-agent.yyc3.vip with DNS resolution, a committed CNAME file, and enforced HTTPS.',
+    prereq:[{zh:'域名管理后台权限',en:'Access to the DNS provider'}],
+    steps:[
+      { n:1, title:'域名解析', titleEn:'DNS record', time:'5 min',
+        content:'在 DNS 服务商添加 CNAME 记录，指向 Pages 默认域名，等待解析生效。',
+        contentEn:'Add a CNAME record at the DNS provider pointing to the default Pages host and wait for propagation.',
+        code:[['bash','dig +short h-agent.yyc3.vip']],
+        warning:'', tip:'' },
+      { n:2, title:'CNAME 落盘', titleEn:'Commit CNAME', time:'7 min',
+        content:'仓库内 CNAME 文件内容必须与域名完全一致，并随部署复制到产物根目录。',
+        contentEn:'The committed CNAME must match the domain exactly and be copied to the artifact root on deploy.',
+        code:[['bash','cat pubilc/CNAME']],
+        warning:'', tip:'' },
+      { n:3, title:'强制 HTTPS', titleEn:'Enforce HTTPS', time:'8 min',
+        content:'等待新域名证书签发完成，再在仓库 Pages 设置中开启 Enforce HTTPS。',
+        contentEn:'Wait for the certificate for the new domain, then enable Enforce HTTPS in the Pages settings.',
+        code:[['bash','gh api repos/YYC-Cube/YYC3-Hermes-Agent/pages']],
+        warning:'更换域名后旧证书不会迁移，需要等新域名重新签发。', tip:'' }
+    ]
+  },
+  {
+    id:'dp03', order:3, cat:'deploy', icon:'🏗️', diff:'easy', time:'10 min',
+    title:'构建预检', titleEn:'Build Preflight',
+    desc:'在推送前本地复现 CI 构建，把问题挡在部署流水线之外。',
+    descEn:'Reproduce the CI build locally before pushing so problems never reach the deploy pipeline.',
+    prereq:[{zh:'Node 依赖已按锁文件安装',en:'Node deps installed from the lockfile'}],
+    steps:[
+      { n:1, title:'安装锁定依赖', titleEn:'Install locked deps', time:'3 min',
+        content:'严格按 package-lock 安装，避免版本漂移导致的构建差异。',
+        contentEn:'Install strictly from package-lock to avoid version drift between local and CI builds.',
+        code:[['bash','cd website'],['bash','npm ci']],
+        warning:'', tip:'' },
+      { n:2, title:'生产构建', titleEn:'Production build', time:'4 min',
+        content:'本地构建产物与 CI 一致，可直接用于比对差异。',
+        contentEn:'The local build matches CI output and can be diffed directly.',
+        code:[['bash','cd website','npm run build']],
+        warning:'', tip:'' },
+      { n:3, title:'清理缓存重试', titleEn:'Clear and retry', time:'3 min',
+        content:'构建产物异常时先清理缓存，再完整复现一次，排除陈旧产物干扰。',
+        contentEn:'When the output looks wrong, clear the cache and rebuild once to rule out stale artifacts.',
+        code:[['bash','cd website','npm run clear'],['bash','npm run build']],
+        warning:'', tip:'锁文件指向镜像源会触发 EALLOWREMOTE，需恢复官方源后重新生成。' }
+    ]
+  },
+  {
+    id:'br01', order:1, cat:'brand', icon:'🖼️', diff:'easy', time:'10 min',
+    title:'顶图与徽章', titleEn:'Hero Image & Badges',
+    desc:'统一 README 顶图与徽章体系，让仓库首页与站点保持同一套视觉语言。',
+    descEn:'Unify README hero images and badges so the repo front page and the site share one visual language.',
+    prereq:[{zh:'已确认最新品牌图资',en:'Latest brand assets confirmed'}],
+    steps:[
+      { n:1, title:'顶图引用', titleEn:'Hero reference', time:'3 min',
+        content:'顶图统一引用 pubilc/yyc3-family.png 原尺寸，不再使用旧图资。',
+        contentEn:'Reference pubilc/yyc3-family.png at native size and drop the legacy banner assets.',
+        code:[['bash','ls -l pubilc/yyc3-family.png']],
+        warning:'', tip:'' },
+      { n:2, title:'徽章同步', titleEn:'Badge sync', time:'4 min',
+        content:'徽章文案与链接在多份 README 中保持一致，域名变更时需整体替换。',
+        contentEn:'Keep badge text and links identical across all READMEs; replace them together on domain changes.',
+        code:[['bash','git grep -n "yyc3.vip" -- "*.md"']],
+        warning:'', tip:'' },
+      { n:3, title:'标语行', titleEn:'Slogan line', time:'3 min',
+        content:'团队标语固定为中英双语一行，位于顶图之后，不再逐 README 变体。',
+        contentEn:'Keep one bilingual slogan line right after the hero image instead of per-README variants.',
+        code:[], warning:'', tip:'' }
+    ]
+  },
+  {
+    id:'br02', order:2, cat:'brand', icon:'🏷️', diff:'easy', time:'15 min',
+    title:'仓库标签与关键词', titleEn:'Repo Topics',
+    desc:'维护仓库描述、主页地址与 topics，提升站内检索与外部发现效率。',
+    descEn:'Maintain description, homepage and topics to improve in-site search and external discovery.',
+    prereq:[{zh:'仓库管理员权限',en:'Repository admin rights'}],
+    steps:[
+      { n:1, title:'元数据更新', titleEn:'Metadata update', time:'5 min',
+        content:'description 与 homepage 指向站点域名，域名变更时同步修改。',
+        contentEn:'Point description and homepage at the site domain and update both when the domain changes.',
+        code:[['bash','gh repo edit YYC-Cube/YYC3-Hermes-Agent --homepage https://h-agent.yyc3.vip']],
+        warning:'', tip:'' },
+      { n:2, title:'标签分层', titleEn:'Topic layering', time:'6 min',
+        content:'topics 按产品、能力、平台三类分组，控制在 20 个以内保证可读。',
+        contentEn:'Group topics into product, capability and platform, staying under 20 for readability.',
+        code:[['bash','gh repo edit YYC-Cube/YYC3-Hermes-Agent --add-topic hermes-agent']],
+        warning:'', tip:'标签统一使用小写短横线，避免空格与大小写混用。' },
+      { n:3, title:'可视化核对', titleEn:'Visual check', time:'4 min',
+        content:'以一张全景图核对标签分组与站点入口是否一致，避免文档与仓库信息漂移。',
+        contentEn:'Cross-check topic groups against site entry points in one overview to prevent drift.',
+        code:[], warning:'', tip:'' }
+    ]
+  },
+  {
+    id:'br03', order:3, cat:'brand', icon:'🎯', diff:'medium', time:'20 min',
+    title:'全端 Logo 资产', titleEn:'Logo Assets',
+    desc:'pubilc/yyc3-icons 覆盖桌面、移动与可穿戴各端尺寸，引用路径需全链路一致。',
+    descEn:'pubilc/yyc3-icons covers desktop, mobile and wearable sizes; references must match everywhere.',
+    prereq:[{zh:'设计侧已导出全套尺寸',en:'Full size set exported by design'}],
+    steps:[
+      { n:1, title:'资产盘点', titleEn:'Asset inventory', time:'8 min',
+        content:'按平台目录核对图标尺寸是否齐全，缺失项先补齐再发布。',
+        contentEn:'Check every platform folder for missing sizes and fill gaps before shipping.',
+        code:[['bash','find pubilc/yyc3-icons -name "*.png" | wc -l']],
+        warning:'', tip:'' },
+      { n:2, title:'引用校验', titleEn:'Reference check', time:'7 min',
+        content:'桌面端、应用商店与站点 favicon 三处引用需指向同一视觉版本。',
+        contentEn:'Desktop, app store and site favicon must all point at the same visual revision.',
+        code:[['bash','git grep -n "yyc3-icons" -- "*.md" "*.ts" "*.json"']],
+        warning:'', tip:'' },
+      { n:3, title:'跨端回归', titleEn:'Cross-platform pass', time:'5 min',
+        content:'在小尺寸下逐端确认图标不被裁切、不糊边，圆角与安全区保持一致。',
+        contentEn:'At small sizes confirm no cropping or blurring, with consistent corner radius and safe area.',
+        code:[], warning:'', tip:'' }
+    ]
+  },
+  {
+    id:'gv01', order:1, cat:'governance', icon:'📌', diff:'medium', time:'20 min',
+    title:'依赖上界与锁定', titleEn:'Dependency Pinning',
+    desc:'所有依赖必须带上界并锁定来源，避免供应链事件波及运行时。',
+    descEn:'Every dependency carries an upper bound and a pinned source so supply-chain incidents cannot reach runtime.',
+    prereq:[{zh:'了解项目依赖清单',en:'Familiarity with the dependency manifest'}],
+    steps:[
+      { n:1, title:'Python 依赖', titleEn:'Python bounds', time:'7 min',
+        content:'PyPI 依赖写成下界加次主版本上界，预发布版本再收紧一级。',
+        contentEn:'Write PyPI deps as a floor plus a next-major ceiling, tightening one level for pre-1.0 packages.',
+        code:[['bash','grep -n "httpx" pyproject.toml']],
+        warning:'裸下界写法会被 CI 与评审直接拒绝。', tip:'' },
+      { n:2, title:'工作流动作', titleEn:'Action pinning', time:'7 min',
+        content:'GitHub Actions 引用固定到 40 位 SHA，并在行尾注明版本注释。',
+        contentEn:'Pin GitHub Actions to a 40-character SHA with a version comment at the end of the line.',
+        code:[['bash','grep -n "uses:" .github/workflows/deploy-pages.yml']],
+        warning:'', tip:'' },
+      { n:3, title:'锁文件回归', titleEn:'Lockfile refresh', time:'6 min',
+        content:'修改依赖声明后重新生成锁文件，并与代码同一次提交。',
+        contentEn:'Regenerate the lockfile after changing declarations and commit it together with the code.',
+        code:[['bash','uv lock']],
+        warning:'', tip:'' }
+    ]
+  },
+  {
+    id:'gv02', order:2, cat:'governance', icon:'🛰️', diff:'hard', time:'30 min',
+    title:'漏洞扫描与闭环', titleEn:'Vulnerability Closure',
+    desc:'扫描依赖与工作流的已知漏洞，逐条确认影响面并给出关闭路径。',
+    descEn:'Scan dependencies and workflows for known issues, confirm blast radius per finding, and record a closure path.',
+    prereq:[{zh:'可读取仓库安全告警',en:'Access to repository security alerts'}],
+    steps:[
+      { n:1, title:'前端审计', titleEn:'Frontend audit', time:'8 min',
+        content:'先跑 npm audit，区分可直接升级与需要 overrides 的两类问题。',
+        contentEn:'Run npm audit first and split findings into direct upgrades versus required overrides.',
+        code:[['bash','cd website'],['bash','npm audit']],
+        warning:'', tip:'' },
+      { n:2, title:'Python 审计', titleEn:'Python audit', time:'9 min',
+        content:'对 Python 依赖做同样的审计，注意传递依赖的版本收敛。',
+        contentEn:'Audit Python dependencies the same way, watching transitive version convergence.',
+        code:[['bash','pip-audit']],
+        warning:'', tip:'' },
+      { n:3, title:'分类处置', titleEn:'Triage and close', time:'13 min',
+        content:'可修复的立即升级并回归；不可修复的记录风险接受结论与观察期，到期复核。',
+        contentEn:'Upgrade and re-test what is fixable; record accepted-risk conclusions and a review window for the rest.',
+        code:[], warning:'', tip:'关闭告警时写清根因与复现路径，避免下一轮重复排查。' }
+    ]
+  },
+  {
+    id:'gv03', order:3, cat:'governance', icon:'🔐', diff:'medium', time:'15 min',
+    title:'密钥与配置隔离', titleEn:'Secrets & Config',
+    desc:'凭据只进 .env，行为配置进 config.yaml，两者严格分离。',
+    descEn:'Credentials live only in .env; behavioural settings live in config.yaml. Keep the two strictly apart.',
+    prereq:[{zh:'了解本机用户配置目录',en:'Know where user config lives on this machine'}],
+    steps:[
+      { n:1, title:'密钥隔离', titleEn:'Secret isolation', time:'5 min',
+        content:'仓库与文档中不得出现真实密钥，示例统一使用占位符。',
+        contentEn:'No real secrets in the repo or docs; examples always use placeholders.',
+        code:[['bash','git check-ignore -v .env']],
+        warning:'', tip:'' },
+      { n:2, title:'行为配置', titleEn:'Behavioural config', time:'5 min',
+        content:'超时、阈值与开关等行为项写入 config.yaml，不再新增环境变量。',
+        contentEn:'Timeouts, thresholds and flags belong in config.yaml instead of new environment variables.',
+        code:[['bash','hermes setup']],
+        warning:'', tip:'' },
+      { n:3, title:'提交前检查', titleEn:'Pre-commit check', time:'5 min',
+        content:'暂存区扫描一遍敏感关键词，命中即中止提交并清理。',
+        contentEn:'Scan the staged diff for sensitive keywords and stop the commit on any hit.',
+        code:[['bash','git diff --cached | grep -i "api_key"']],
+        warning:'扫描命中时不要提交，先清理历史与暂存内容。', tip:'' }
+    ]
+  }
+];
+
+var SKILLS = [
+  { cat:'dev', order:1, name:'启动文档站', desc:'固定端口 3030，热更新预览。', cmd:'cd website && npm run start -- --port 3030' },
+  { cat:'dev', order:2, name:'生产构建', desc:'本地复现 CI 构建产物。', cmd:'cd website && npm run build' },
+  { cat:'dev', order:3, name:'类型检查', desc:'TypeScript 全量校验。', cmd:'cd website && npm run typecheck' },
+  { cat:'dev', order:4, name:'激活环境', desc:'运行 Python 侧命令前必须先激活。', cmd:'source .venv/bin/activate' },
+  { cat:'dev', order:5, name:'初始化配置', desc:'交互式生成用户级配置。', cmd:'hermes setup' },
+  { cat:'test', order:1, name:'全量测试', desc:'统一入口，自动隔离环境与目录。', cmd:'scripts/run_tests.sh' },
+  { cat:'test', order:2, name:'目录级测试', desc:'按模块收敛测试范围。', cmd:'scripts/run_tests.sh tests/gateway/' },
+  { cat:'test', order:3, name:'单文件过滤', desc:'文件粒度运行后按用例名缩小。', cmd:'scripts/run_tests.sh tests/agent/test_foo.py -k test_x' },
+  { cat:'ship', order:1, name:'触发部署', desc:'推送 main 自动构建并发布 Pages。', cmd:'git push origin main' },
+  { cat:'ship', order:2, name:'查看部署记录', desc:'列出最近的工作流运行状态。', cmd:'gh run list --workflow deploy-pages.yml' },
+  { cat:'ship', order:3, name:'校验域名落盘', desc:'确认 CNAME 与站点域名一致。', cmd:'cat pubilc/CNAME' },
+  { cat:'ops', order:1, name:'查看日志', desc:'跟踪最新日志输出。', cmd:'hermes logs --follow' },
+  { cat:'ops', order:2, name:'前端依赖审计', desc:'列出前端依赖的已知漏洞。', cmd:'cd website && npm audit' },
+  { cat:'ops', order:3, name:'Python 依赖审计', desc:'列出 Python 依赖的已知漏洞。', cmd:'pip-audit' },
+  { cat:'ops', order:4, name:'清理构建缓存', desc:'排除陈旧产物后再构建。', cmd:'cd website && npm run clear' }
+];
+
+var I18N = {
+  zh: {
+    _code:'zh', _label:'EN', docTitle:'YYC3 Hermes Agent · 操作中心',
+    appName:'YYC3 Hermes Agent', appSub:'言启象限 · 语枢未来',
+    navGuides:'操作手册', navSkills:'命令速查', dashboard:'仪表盘', backToDash:'返回仪表盘',
+    searchPh:'搜索手册…', searchTopPh:'搜索手册…',
+    sbToggle:'展开或收起侧边栏',
+    loading:'正在装配操作中心…',
+    statAll:'全部手册', statCats:'分类', statDone:'已完成',
+    progressLabel:'总进度', progressCount:'{done}/{total} 完成',
+    filterAll:'全部',
+    dashBadge:'{n} 篇手册 · {c} 个分类', dashTitle:'Hermes Agent 操作中心',
+    dashDesc:'YYC³ 团队交付的离线条目化手册：本地起步、站点部署、品牌资产与治理安全，一处查全。',
+    viewAll:'查看全部 {n} 步 →', stepsPreview:'步骤速览', stepsDoneFmt:'{a}/{b} 步',
+    prereq:'前置条件', noPrereq:'无',
+    difficulty:'难度', costTime:'耗时', overview:'概览', category:'分类',
+    stepsTitle:'执行步骤', stepsUnit:'步',
+    doneMark:'标记完成', undoMark:'撤销完成', guideDone:'标记完成', guideUndone:'撤销完成',
+    modalTitle:'{t} · 步骤预览', close:'关闭',
+    skillsTitle:'命令速查', skillsDesc:'可一键复制的常用命令，覆盖 {n} 类场景。',
+    skillsBadge:'{n} 条命令', copyCmd:'点击复制', copied:'已复制',
+    complexity:'复杂度', skillCount:'{n} 条',
+    diffEasy:'简单', diffMedium:'中等', diffHard:'进阶',
+    exportBtn:'导出进度', importBtn:'导入进度', resetBtn:'重置进度',
+    shareBtn:'分享', shareOk:'链接已复制', copyOk:'已复制', copyFail:'复制失败',
+    themeTitle:'切换主题', langTitle:'切换语言',
+    exportOk:'进度已导出为 JSON 文件', importOk:'进度导入成功', importErr:'文件格式无法识别',
+    resetConfirm:'确定要清空全部进度吗？此操作不可撤销。', resetOk:'进度已重置',
+    errTitle:'页面出现脚本异常', clockLabel:'当前时间',
+    emptyTitle:'没有匹配结果', emptyDesc:'试试更换关键词或切换分类。',
+    repoLink:'仓库', siteLink:'站点', docsLink:'文档',
+    footerNote:'离线单文件 · 无 CDN · 无埋点'
+  },
+  en: {
+    _code:'en', _label:'中', docTitle:'YYC3 Hermes Agent · Operations Hub',
+    appName:'YYC3 Hermes Agent', appSub:'Words Initiate Quadrants, Language Serves as Core for Future',
+    navGuides:'Playbooks', navSkills:'Commands', dashboard:'Dashboard', backToDash:'Back to dashboard',
+    searchPh:'Search playbooks…', searchTopPh:'Search playbooks…',
+    sbToggle:'Expand or collapse the sidebar',
+    loading:'Assembling the operations hub…',
+    statAll:'Playbooks', statCats:'Categories', statDone:'Completed',
+    progressLabel:'Overall progress', progressCount:'{done}/{total} done',
+    filterAll:'All',
+    dashBadge:'{n} playbooks · {c} categories', dashTitle:'Hermes Agent Operations Hub',
+    dashDesc:'Offline guided playbooks from the YYC3 team: local setup, site deployment, brand assets and governance in one place.',
+    viewAll:'View all {n} steps →', stepsPreview:'Step preview', stepsDoneFmt:'{a}/{b} steps',
+    prereq:'Prerequisites', noPrereq:'None',
+    difficulty:'Difficulty', costTime:'Time', overview:'Overview', category:'Category',
+    stepsTitle:'Execution steps', stepsUnit:'steps',
+    doneMark:'Mark done', undoMark:'Undo done', guideDone:'Mark as done', guideUndone:'Undo done',
+    modalTitle:'{t} · Steps', close:'Close',
+    skillsTitle:'Command Reference', skillsDesc:'One-click copyable commands across {n} scenarios.',
+    skillsBadge:'{n} commands', copyCmd:'Click to copy', copied:'Copied',
+    complexity:'Complexity', skillCount:'{n} items',
+    diffEasy:'Easy', diffMedium:'Medium', diffHard:'Advanced',
+    exportBtn:'Export progress', importBtn:'Import progress', resetBtn:'Reset progress',
+    shareBtn:'Share', shareOk:'Link copied', copyOk:'Copied', copyFail:'Copy failed',
+    themeTitle:'Toggle theme', langTitle:'Switch language',
+    exportOk:'Progress exported as JSON', importOk:'Progress imported', importErr:'Unrecognized file format',
+    resetConfirm:'Clear all progress? This cannot be undone.', resetOk:'Progress reset',
+    errTitle:'A script error occurred', clockLabel:'Local time',
+    emptyTitle:'No matching results', emptyDesc:'Try another keyword or category.',
+    repoLink:'Repository', siteLink:'Website', docsLink:'Docs',
+    footerNote:'Offline single file · no CDN · no tracking'
+  }
+};
+
+var LINKS = { repo:'https://github.com/YYC-Cube/YYC3-Hermes-Agent', site:'https://h-agent.yyc3.vip', docs:'https://h-agent.yyc3.vip/docs' };
+</script>
+
+<script>
+/* ═══════════ 逻辑块 · i18n → 主题 → 渲染 → 交互 → 路由 → init ═══════════ */
+(function () {
+  'use strict';
+
+  /* ═══ 存储封装 ═══ */
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  /* ═══ 转义铁律 4.1 R1 ═══ */
+  function escHtml(v) {
+    return String(v === null || v === undefined ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /* ═══ i18n ═══ */
+  var currentLang = lsGet('lang', 'zh') === 'en' ? 'en' : 'zh';
+  function t(key) {
+    var d = I18N[currentLang] || I18N.zh;
+    var v = d[key];
+    if (v === undefined) v = I18N.zh[key];
+    return v === undefined ? key : v;
+  }
+  function tf(key, vars) {
+    return String(t(key)).replace(/\{(\w+)\}/g, function (m, name) {
+      return vars && vars[name] !== undefined ? String(vars[name]) : m;
+    });
+  }
+  function pick(obj, base) {
+    return currentLang === 'en' ? (obj[base + 'En'] || obj[base] || '') : (obj[base] || '');
+  }
+  function guideTitle(g) { return currentLang === 'en' ? (g.titleEn || g.title) : g.title; }
+  function diffLabel(d) {
+    if (d === 'easy') return t('diffEasy');
+    if (d === 'hard') return t('diffHard');
+    return t('diffMedium');
+  }
+  function diffStars(d) { return d === 'easy' ? '★' : (d === 'hard' ? '★★★' : '★★'); }
+
+  /* ═══ 分类注册表读取 ═══ */
+  function catOf(key) {
+    for (var i = 0; i < CATEGORIES.length; i++) if (CATEGORIES[i].key === key) return CATEGORIES[i];
+    return { key: key, emoji: '•', zh: key, en: key, color: '#7c6cff' };
+  }
+  function catName(c) { return currentLang === 'en' ? c.en : c.zh; }
+  function catColor(key) { return catOf(key).color; }
+  function skillCatOf(key) {
+    for (var i = 0; i < SKILL_CATS.length; i++) if (SKILL_CATS[i].key === key) return SKILL_CATS[i];
+    return { key: key, emoji: '•', zh: key, en: key, stars: 1, color: '#7c6cff' };
+  }
+
+  /* ═══ 状态 ═══ */
+  var state = { view: 'dashboard', guideId: null, filter: 'all', q: '', modalId: null, skillCat: 'all' };
+
+  function isDone(id) { return lsGet('guide-done-' + id, '0') === '1'; }
+  function setDone(id, v) { if (v) lsSet('guide-done-' + id, '1'); else lsDel('guide-done-' + id); }
+  function isStepDone(id, n) { return lsGet('step-done-' + id + '-' + n, '0') === '1'; }
+  function setStepDone(id, n, v) { if (v) lsSet('step-done-' + id + '-' + n, '1'); else lsDel('step-done-' + id + '-' + n); }
+  function isStepOpen(id, n) { return lsGet('step-open-' + id + '-' + n, n === 1 ? '1' : '0') === '1'; }
+  function setStepOpen(id, n, v) { lsSet('step-open-' + id + '-' + n, v ? '1' : '0'); }
+
+  function guideById(id) {
+    for (var i = 0; i < GUIDES.length; i++) if (GUIDES[i].id === id) return GUIDES[i];
+    return null;
+  }
+  function doneSteps(g) {
+    var n = 0;
+    for (var i = 0; i < g.steps.length; i++) if (isStepDone(g.id, g.steps[i].n)) n++;
+    return n;
+  }
+  function overallPct() {
+    var total = 0, done = 0;
+    for (var i = 0; i < GUIDES.length; i++) { total++; if (isDone(GUIDES[i].id)) done++; }
+    return total ? Math.round(done / total * 100) : 0;
+  }
+  function matchGuide(g, q) {
+    if (!q) return true;
+    var hay = [g.id, g.title, g.titleEn, g.desc, g.descEn, catName(catOf(g.cat)), g.cat].join(' ').toLowerCase();
+    return hay.indexOf(q) !== -1;
+  }
+
+  /* ═══ 主题 ═══ */
+  var SUN = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"></path>';
+  var MOON = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>';
+  function isLight() { return document.documentElement.classList.contains('light'); }
+  function syncThemeIcon() {
+    var el = document.getElementById('themeIcon');
+    if (el) el.innerHTML = isLight() ? SUN : MOON;
+  }
+  function toggleTheme() {
+    var next = !isLight();
+    document.documentElement.classList.toggle('light', next);
+    lsSet('theme', next ? 'light' : 'dark');
+    var m = document.querySelector('meta[name="color-scheme"]');
+    if (m) m.setAttribute('content', next ? 'light dark' : 'dark light');
+    syncThemeIcon();
+  }
+
+  /* ═══ 静态 i18n ═══ */
+  function syncLangLabel() {
+    var tag = document.getElementById('langTag');
+    if (tag) tag.textContent = t('_label');
+  }
+  function applyStaticI18n() {
+    document.documentElement.lang = currentLang === 'en' ? 'en' : 'zh-CN';
+    document.title = t('docTitle');
+    var nodes = document.querySelectorAll('[data-i18n]');
+    for (var i = 0; i < nodes.length; i++) nodes[i].textContent = t(nodes[i].getAttribute('data-i18n'));
+    var phs = document.querySelectorAll('[data-i18n-ph]');
+    for (var j = 0; j < phs.length; j++) phs[j].setAttribute('placeholder', t(phs[j].getAttribute('data-i18n-ph')));
+    var tts = document.querySelectorAll('[data-i18n-title]');
+    for (var k = 0; k < tts.length; k++) {
+      var v = t(tts[k].getAttribute('data-i18n-title'));
+      tts[k].setAttribute('title', v);
+      tts[k].setAttribute('aria-label', v);
+    }
+    syncLangLabel();
+    syncThemeIcon();
+  }
+
+  /* ═══ 侧边栏 M1 ═══ */
+  function renderSidebar() {
+    var q = state.q.trim().toLowerCase();
+    var nav = document.getElementById('sbNav');
+    if (!nav) return;
+    var html = '';
+    for (var ci = 0; ci < CATEGORIES.length; ci++) {
+      var c = CATEGORIES[ci];
+      if (c.key === 'skills') continue;
+      var list = [];
+      for (var gi = 0; gi < GUIDES.length; gi++) {
+        if (GUIDES[gi].cat === c.key && matchGuide(GUIDES[gi], q)) list.push(GUIDES[gi]);
+      }
+      if (!list.length) continue;
+      html += '<div class="sb-group"><div class="sb-cat"><span class="sb-cat-dot" style="background:' + c.color + '"></span>' +
+        '<span class="sb-cat-name">' + escHtml(catName(c)) + '</span>' +
+        '<span class="sb-cat-n">' + list.length + '</span></div>';
+      for (var li = 0; li < list.length; li++) {
+        var g = list[li];
+        var act = (state.view === 'detail' && state.guideId === g.id) ? ' active' : '';
+        var dn = isDone(g.id) ? ' done' : '';
+        html += '<a class="sb-item' + act + dn + '" data-act="open-guide" data-id="' + escHtml(g.id) + '" href="#guide-' + escHtml(g.id) + '">' +
+          '<span class="sb-dot"></span>' +
+          '<span class="sb-idx">' + g.order + '.</span>' +
+          '<span class="sb-t">' + escHtml(guideTitle(g)) + '</span>' +
+          '<span class="sb-tail">' + escHtml(diffStars(g.diff)) + '</span></a>';
+      }
+      html += '</div>';
+    }
+    var skActive = (state.view === 'skills') ? ' active' : '';
+    html += '<div class="sb-group"><a class="sb-item' + skActive + '" data-act="nav-skills" href="#skills">' +
+      '<span class="sb-dot"></span><span class="sb-idx">⌘</span>' +
+      '<span class="sb-t">' + escHtml(t('navSkills')) + '</span>' +
+      '<span class="sb-tail">' + SKILLS.length + '</span></a></div>';
+    nav.innerHTML = html;
+
+    var pct = overallPct();
+    var fill = document.getElementById('sbFill');
+    var pctEl = document.getElementById('sbPct');
+    var cntEl = document.getElementById('sbCount');
+    var doneTotal = 0;
+    for (var di = 0; di < GUIDES.length; di++) if (isDone(GUIDES[di].id)) doneTotal++;
+    if (fill) fill.style.width = pct + '%';
+    if (pctEl) pctEl.textContent = pct + '%';
+    if (cntEl) cntEl.textContent = doneTotal + '/' + GUIDES.length;
+  }
+
+  /* ═══ 卡片 M4 ═══ */
+  function cardHtml(g, idx) {
+    var c = catOf(g.cat);
+    var done = isDone(g.id);
+    var sd = doneSteps(g);
+    var total = g.steps.length;
+    var pct = total ? Math.round(sd / total * 100) : 0;
+    var badgeCls = pct === 100 ? 'gc-badge full' : 'gc-badge';
+    var preview = '';
+    for (var i = 0; i < Math.min(3, total); i++) {
+      var s = g.steps[i];
+      var sdone = isStepDone(g.id, s.n) ? ' sd' : '';
+      preview += '<span class="gc-step' + sdone + '" data-act="step-jump" data-id="' + escHtml(g.id) + '" data-n="' + s.n + '">' +
+        '<span class="n">' + (isStepDone(g.id, s.n) ? '✓' : s.n) + '</span>' +
+        '<span class="t">' + escHtml(pick(s, 'title')) + '</span></span>';
+    }
+    var tags = '';
+    var pre = g.prereq || [];
+    for (var pi = 0; pi < Math.min(3, pre.length); pi++) tags += '<span class="gc-tag">' + escHtml(pick(pre[pi], 'zh')) + '</span>';
+    if (!tags) tags = '<span class="gc-tag">' + escHtml(t('noPrereq')) + '</span>';
+    var more = '<span class="gc-more" data-act="open-modal" data-id="' + escHtml(g.id) + '">' + escHtml(tf('viewAll', { n: total })) + '</span>';
+    return '<article class="gcard' + (done ? ' is-done' : '') + '" style="--cat-color:' + c.color + ';--i:' + idx + '" data-act="open-guide" data-id="' + escHtml(g.id) + '">' +
+      '<span class="gc-bar"></span>' +
+      '<span class="' + badgeCls + '">' + escHtml(tf('stepsDoneFmt', { a: sd, b: total })) + '</span>' +
+      '<div class="gc-head"><span class="gc-ico">' + escHtml(g.icon) + '</span><div><div class="gc-title">' + g.order + '. ' + escHtml(guideTitle(g)) + '</div></div></div>' +
+      '<div class="gc-meta"><span class="dm">' + escHtml(catName(c)) + '</span><span>' + escHtml(diffLabel(g.diff)) + '</span><span>' + escHtml(g.time) + '</span></div>' +
+      '<p class="gc-desc">' + escHtml(pick(g, 'desc')) + '</p>' +
+      '<div class="gc-tags">' + tags + '</div>' +
+      '<div class="gc-steps"><div class="gc-steps-h">' + escHtml(t('stepsPreview')) + '</div>' + preview + more + '</div>' +
+      '<button class="gc-done' + (done ? ' on' : '') + '" type="button" data-act="toggle-done" data-id="' + escHtml(g.id) + '" title="' + escHtml(done ? t('guideUndone') : t('guideDone')) + '" aria-label="' + escHtml(done ? t('guideUndone') : t('guideDone')) + '">✓</button>' +
+      '</article>';
+  }
+
+  /* ═══ 仪表盘 M3 ═══ */
+  function renderDashboard() {
+    var host = document.getElementById('content');
+    if (!host) return;
+    var total = GUIDES.length;
+    var catsUsed = 0, doneCount = 0;
+    for (var i = 0; i < CATEGORIES.length; i++) if (CATEGORIES[i].key !== 'skills') catsUsed++;
+    for (var j = 0; j < GUIDES.length; j++) if (isDone(GUIDES[j].id)) doneCount++;
+
+    var filters = '<button class="filter-btn' + (state.filter === 'all' ? ' active' : '') + '" type="button" data-act="filter" data-cat="all">' +
+      '<span class="f-dot" style="background:var(--accent-v)"></span>' + escHtml(t('filterAll')) + '</button>';
+    for (var k = 0; k < CATEGORIES.length; k++) {
+      var c = CATEGORIES[k];
+      filters += '<button class="filter-btn' + (state.filter === c.key ? ' active' : '') + '" type="button" data-act="filter" data-cat="' + escHtml(c.key) + '" style="--cat-color:' + c.color + '">' +
+        '<span class="f-dot"></span>' + escHtml(c.emoji + ' ' + catName(c)) + '</button>';
+    }
+
+    var q = state.q.trim().toLowerCase();
+    var sections = '', shown = 0, idx = 0;
+    for (var m = 0; m < CATEGORIES.length; m++) {
+      var cat = CATEGORIES[m];
+      if (cat.key === 'skills') continue;
+      if (state.filter !== 'all' && state.filter !== cat.key) continue;
+      var list = [];
+      for (var n = 0; n < GUIDES.length; n++) if (GUIDES[n].cat === cat.key && matchGuide(GUIDES[n], q)) list.push(GUIDES[n]);
+      if (!list.length) continue;
+      var cd = 0;
+      for (var p = 0; p < list.length; p++) if (isDone(list[p].id)) cd++;
+      var cards = '';
+      for (var r = 0; r < list.length; r++) { cards += cardHtml(list[r], idx); idx++; }
+      shown += list.length;
+      sections += '<section class="cat-section" style="--cat-color:' + cat.color + '">' +
+        '<div class="cat-head"><span class="cat-ico">' + escHtml(cat.emoji) + '</span>' +
+        '<span class="cat-name">' + escHtml(catName(cat)) + '</span>' +
+        '<span class="cat-count">' + list.length + '</span>' +
+        '<span class="cat-meter"><i><b style="width:' + Math.round(cd / list.length * 100) + '%"></b></i><span>' + cd + '/' + list.length + '</span></span></div>' +
+        '<div class="grid">' + cards + '</div></section>';
+    }
+    if (!shown) sections = '<div class="empty"><h3>' + escHtml(t('emptyTitle')) + '</h3><p>' + escHtml(t('emptyDesc')) + '</p></div>';
+
+    host.innerHTML = '<div class="hero">' +
+      '<span class="badge">' + escHtml(tf('dashBadge', { n: total, c: catsUsed })) + '</span>' +
+      '<h2>' + escHtml(t('dashTitle')) + '</h2>' +
+      '<p>' + escHtml(t('dashDesc')) + '</p></div>' +
+      '<div class="stats">' +
+      '<div class="stat"><b>' + total + '</b><span>' + escHtml(t('statAll')) + '</span></div>' +
+      '<div class="stat"><b>' + catsUsed + '</b><span>' + escHtml(t('statCats')) + '</span></div>' +
+      '<div class="stat"><b>' + doneCount + '</b><span>' + escHtml(t('statDone')) + '</span></div></div>' +
+      '<div class="filters" role="tablist">' + filters + '</div>' +
+      sections + footerHtml();
+
+    setTopTitle(t('appName'), t('appSub'));
+  }
+
+  /* ═══ 详情 M5 ═══ */
+  function stepHtml(g, s) {
+    var sdone = isStepDone(g.id, s.n);
+    var open = isStepOpen(g.id, s.n);
+    var cls = 'step' + (sdone ? ' is-done' : '') + (open ? ' is-open' : '') + (s.isDestructive ? ' is-danger' : '');
+    var body = '<div class="step-body"><p>' + escHtml(pick(s, 'content')) + '</p>';
+    if (s.code && s.code.length) {
+      for (var ci = 0; ci < s.code.length; ci++) {
+        var blk = s.code[ci];
+        body += '<div class="code-block"><div class="code-head"><span class="code-lang">' + escHtml(blk[0]) + '</span>' +
+          '<button class="copy-btn" type="button" data-act="copy">' + escHtml(t('copyCmd')) + '</button></div>' +
+          '<pre><code>' + escHtml(blk[1]) + '</code></pre></div>';
+      }
+    }
+    if (s.warning) body += '<div class="note warn"><b>!</b><span>' + escHtml(pick(s, 'warning')) + '</span></div>';
+    if (s.tip) body += '<div class="note tip"><b>i</b><span>' + escHtml(pick(s, 'tip')) + '</span></div>';
+    body += '</div>';
+
+    return '<div class="' + cls + '" data-step="' + s.n + '">' +
+      '<div class="step-head" data-act="step-open" data-id="' + escHtml(g.id) + '" data-n="' + s.n + '" role="button" tabindex="0">' +
+      '<button class="step-dot" type="button" data-act="step-done" data-id="' + escHtml(g.id) + '" data-n="' + s.n + '" aria-label="' + escHtml(sdone ? t('undoMark') : t('doneMark')) + '">' + (sdone ? '✓' : s.n) + '</button>' +
+      '<span class="step-title">' + escHtml(pick(s, 'title')) + '</span>' +
+      '<span class="step-time">' + escHtml(s.time) + '</span>' +
+      '<span class="step-caret">▶</span></div>' + body + '</div>';
+  }
+
+  function renderDetail(id) {
+    var g = guideById(id);
+    var host = document.getElementById('content');
+    if (!g || !host) { goHome(); return; }
+    var c = catOf(g.cat);
+    var sd = doneSteps(g);
+    var total = g.steps.length;
+    var pct = total ? Math.round(sd / total * 100) : 0;
+    var steps = '';
+    for (var i = 0; i < total; i++) steps += stepHtml(g, g.steps[i]);
+
+    var pre = g.prereq || [];
+    var preHtml = '';
+    if (pre.length) {
+      preHtml += '<div class="block-h">' + escHtml(t('prereq')) + '</div><ul class="prereq">';
+      for (var j = 0; j < pre.length; j++) preHtml += '<li><span>' + escHtml(pick(pre[j], 'zh')) + '</span></li>';
+      preHtml += '</ul>';
+    }
+
+    host.innerHTML = '<a class="back" data-act="home" href="#">← ' + escHtml(t('backToDash')) + '</a>' +
+      '<div class="d-hero"><span class="d-icon" style="--cat-color:' + c.color + '">' + escHtml(g.icon) + '</span>' +
+      '<div><h2>' + escHtml(g.order + '. ' + guideTitle(g)) + '</h2>' +
+      '<p>' + escHtml(pick(g, 'desc')) + '</p>' +
+      '<div class="block-h">' + escHtml(t('overview')) + '</div>' +
+      '<div class="d-pills">' +
+      '<span class="pill cat" style="--cat-color:' + c.color + '">' + escHtml(t('category') + ' · ' + catName(c)) + '</span>' +
+      '<span class="pill">' + escHtml(t('difficulty') + ' · ' + diffLabel(g.diff)) + '</span>' +
+      '<span class="pill">' + escHtml(t('costTime') + ' · ' + g.time) + '</span>' +
+      '<span class="pill">' + escHtml(sd + '/' + total + ' ' + t('stepsUnit')) + '</span>' +
+      '</div></div></div>' +
+      '<div class="pbar-wrap"><div class="pbar-head"><span id="pbarTxt">' + escHtml(tf('progressCount', { done: sd, total: total })) + '</span><span id="pbarPct">' + pct + '%</span></div>' +
+      '<div class="pbar"><span id="pbarFill" style="width:' + pct + '%"></span></div></div>' +
+      preHtml +
+      '<div class="block-h">' + escHtml(t('stepsTitle')) + '</div>' +
+      '<div class="steps">' + steps + '</div>' +
+      footerHtml();
+
+    setTopTitle(guideTitle(g), catName(c));
+  }
+
+  /* ═══ 技能面板 M7 ═══ */
+  function renderSkills() {
+    var host = document.getElementById('content');
+    if (!host) return;
+    var q = state.q.trim().toLowerCase();
+    var cats = '<button class="sk-cat-btn' + (state.skillCat === 'all' ? ' active' : '') + '" type="button" data-act="sk-cat" data-cat="all" style="--sk-color:#7c6cff"><span class="d" style="background:#7c6cff"></span>' + escHtml(t('filterAll')) + '</button>';
+    for (var i = 0; i < SKILL_CATS.length; i++) {
+      var sc = SKILL_CATS[i];
+      cats += '<button class="sk-cat-btn' + (state.skillCat === sc.key ? ' active' : '') + '" type="button" data-act="sk-cat" data-cat="' + escHtml(sc.key) + '" style="--sk-color:' + sc.color + '">' +
+        '<span class="d"></span>' + escHtml(sc.emoji + ' ' + (currentLang === 'en' ? sc.en : sc.zh)) + '</button>';
+    }
+
+    var secs = '', shown = 0;
+    for (var j = 0; j < SKILL_CATS.length; j++) {
+      var s2 = SKILL_CATS[j];
+      if (state.skillCat !== 'all' && state.skillCat !== s2.key) continue;
+      var items = [];
+      for (var k = 0; k < SKILLS.length; k++) {
+        var it = SKILLS[k];
+        if (it.cat !== s2.key) continue;
+        if (q && (it.name + ' ' + it.desc + ' ' + it.cmd).toLowerCase().indexOf(q) === -1) continue;
+        items.push(it);
+      }
+      if (!items.length) continue;
+      shown += items.length;
+      var cards = '';
+      for (var m = 0; m < items.length; m++) {
+        var it2 = items[m];
+        cards += '<div class="sk-card" style="--sk-color:' + s2.color + '">' +
+          '<div class="sk-name">' + escHtml(it2.name) + '<span class="st">' + stars(s2.stars) + '</span></div>' +
+          '<div class="sk-desc">' + escHtml(it2.desc) + '</div>' +
+          '<button class="sk-cmd" type="button" data-act="copy-skill">' + escHtml(it2.cmd) + '</button>' +
+          '<div class="sk-hint">' + escHtml(t('copyCmd')) + '</div></div>';
+      }
+      secs += '<section class="sk-sec" style="--sk-color:' + s2.color + '">' +
+        '<div class="sk-sec-head"><span class="e">' + escHtml(s2.emoji) + '</span>' +
+        '<span class="n">' + escHtml(currentLang === 'en' ? s2.en : s2.zh) + '</span>' +
+        '<span class="sk-stars" title="' + escHtml(t('complexity')) + '">' + stars(s2.stars) + '</span>' +
+        '<span class="c">' + escHtml(tf('skillCount', { n: items.length })) + '</span></div>' +
+        '<div class="sk-grid">' + cards + '</div></section>';
+    }
+    if (!shown) secs = '<div class="empty"><h3>' + escHtml(t('emptyTitle')) + '</h3><p>' + escHtml(t('emptyDesc')) + '</p></div>';
+
+    host.innerHTML = '<div class="hero"><span class="badge">' + escHtml(tf('skillsBadge', { n: SKILLS.length })) + '</span>' +
+      '<h2>' + escHtml(t('skillsTitle')) + '</h2>' +
+      '<p>' + escHtml(tf('skillsDesc', { n: SKILL_CATS.length })) + '</p></div>' +
+      '<div class="sk-cats">' + cats + '</div>' + secs + footerHtml();
+
+    setTopTitle(t('skillsTitle'), t('navSkills'));
+  }
+  function stars(n) {
+    var s = '';
+    for (var i = 0; i < 5; i++) s += i < n ? '★' : '☆';
+    return s;
+  }
+
+  /* ═══ 页脚 ═══ */
+  function footerHtml() {
+    return '<footer class="foot">' +
+      '<a href="' + escHtml(LINKS.repo) + '" target="_blank" rel="noopener">' + escHtml(t('repoLink')) + '</a><span class="sep">·</span>' +
+      '<a href="' + escHtml(LINKS.site) + '" target="_blank" rel="noopener">' + escHtml(t('siteLink')) + '</a><span class="sep">·</span>' +
+      '<a href="' + escHtml(LINKS.docs) + '" target="_blank" rel="noopener">' + escHtml(t('docsLink')) + '</a>' +
+      '<span style="margin-left:auto">' + escHtml(t('footerNote')) + '</span></footer>';
+  }
+
+  function setTopTitle(main, sub) {
+    var a = document.getElementById('topTitle');
+    var b = document.getElementById('topSub');
+    if (a) a.textContent = main;
+    if (b) b.textContent = sub;
+  }
+
+  /* ═══ 渲染分发 ═══ */
+  function renderMain() {
+    if (state.view === 'skills') renderSkills();
+    else if (state.view === 'detail' && state.guideId) renderDetail(state.guideId);
+    else renderDashboard();
+  }
+  function rerender() {
+    var y = window.scrollY;
+    renderSidebar();
+    renderMain();
+    window.scrollTo(0, y);
+  }
+
+  /* ═══ 弹窗 M6 ═══ */
+  function openModal(id) {
+    var g = guideById(id);
+    if (!g) return;
+    state.modalId = id;
+    document.getElementById('modalIco').textContent = g.icon;
+    document.getElementById('modalTitle').textContent = tf('modalTitle', { t: guideTitle(g) });
+    var body = '';
+    for (var i = 0; i < g.steps.length; i++) {
+      var s = g.steps[i];
+      var sd = isStepDone(g.id, s.n);
+      body += '<div class="m-step' + (sd ? ' sd' : '') + '" data-act="step-jump" data-id="' + escHtml(g.id) + '" data-n="' + s.n + '">' +
+        '<span class="n">' + (sd ? '✓' : s.n) + '</span>' +
+        '<span class="t">' + escHtml(pick(s, 'title')) + '</span>' +
+        '<span class="tm">' + escHtml(s.time) + '</span>' +
+        '<span class="ck">' + (sd ? '✓' : '') + '</span></div>';
+    }
+    document.getElementById('modalBody').innerHTML = body;
+    document.getElementById('modal').classList.add('on');
+  }
+  function closeModal() {
+    state.modalId = null;
+    document.getElementById('modal').classList.remove('on');
+  }
+  function refreshModal() { if (state.modalId) openModal(state.modalId); }
+
+  /* ═══ 提示与剪贴板 ═══ */
+  function toast(msg) {
+    var wrap = document.getElementById('toasts');
+    if (!wrap) return;
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    wrap.appendChild(el);
+    setTimeout(function () {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity .3s';
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
+    }, 1900);
+  }
+  function legacyCopy(txt) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast(ok ? t('copyOk') : t('copyFail'));
+    } catch (e) { toast(t('copyFail')); }
+  }
+  function copyText(txt) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () { toast(t('copyOk')); }, function () { legacyCopy(txt); });
+    } else legacyCopy(txt);
+  }
+
+  /* ═══ 进度导出 / 导入 / 重置 ═══ */
+  function stamp() {
+    var d = new Date();
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+  }
+  function exportProgress() {
+    var payload = { app: 'YYC3-HERMES-HUB', version: 1, exportTime: new Date().toISOString(), lang: currentLang, guides: {}, steps: {} };
+    for (var i = 0; i < GUIDES.length; i++) {
+      var g = GUIDES[i];
+      if (isDone(g.id)) payload.guides[g.id] = { done: true };
+      payload.steps[g.id] = {};
+      for (var j = 0; j < g.steps.length; j++) {
+        var s = g.steps[j];
+        var d = isStepDone(g.id, s.n), o = isStepOpen(g.id, s.n);
+        if (d || o) payload.steps[g.id][s.n] = { done: d, open: o };
+      }
+    }
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'yyc3-hermes-progress-' + stamp() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1200);
+    toast(t('exportOk'));
+  }
+  function applyImport(data) {
+    if (!data || typeof data !== 'object') return false;
+    var ok = false;
+    var gp = data.guides || {};
+    for (var id in gp) {
+      if (!Object.prototype.hasOwnProperty.call(gp, id)) continue;
+      if (!guideById(id)) continue;
+      if (gp[id] && gp[id].done) { setDone(id, true); ok = true; }
+    }
+    var sp = data.steps || {};
+    for (var gid in sp) {
+      if (!Object.prototype.hasOwnProperty.call(sp, gid)) continue;
+      var g = guideById(gid);
+      if (!g) continue;
+      for (var n in sp[gid]) {
+        if (!Object.prototype.hasOwnProperty.call(sp[gid], n)) continue;
+        var rec = sp[gid][n] || {};
+        if (rec.done) { setStepDone(gid, n, true); ok = true; }
+        if (rec.open !== undefined) { setStepOpen(gid, n, !!rec.open); ok = true; }
+      }
+    }
+    return ok;
+  }
+  function importProgress(file) {
+    if (!file) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      var data = null;
+      try { data = JSON.parse(String(rd.result)); } catch (e) { data = null; }
+      var ok = applyImport(data);
+      if (!ok) { alert(t('importErr')); return; }
+      toast(t('importOk'));
+      applyRoute(true);
+    };
+    rd.onerror = function () { alert(t('importErr')); };
+    rd.readAsText(file);
+  }
+  function resetProgress() {
+    if (!confirm(t('resetConfirm'))) return;
+    var kill = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && (k.indexOf('guide-done-') === 0 || k.indexOf('step-done-') === 0 || k.indexOf('step-open-') === 0)) kill.push(k);
+      }
+    } catch (e) {}
+    for (var j = 0; j < kill.length; j++) lsDel(kill[j]);
+    toast(t('resetOk'));
+    applyRoute(true);
+  }
+
+  /* ═══ 分享 ═══ */
+  function flashShare() {
+    var b = document.getElementById('shareBtn');
+    if (!b) return;
+    b.classList.add('flash');
+    setTimeout(function () { b.classList.remove('flash'); }, 2000);
+  }
+  function doShare() {
+    var url = location.href;
+    if (navigator.share) {
+      navigator.share({ title: t('appName'), text: t('appSub'), url: url }).then(flashShare, function (err) {
+        if (err && err.name === 'AbortError') return;
+        copyText(url);
+        flashShare();
+      });
+      return;
+    }
+    copyText(url);
+    flashShare();
+    toast(t('shareOk'));
+  }
+
+  /* ═══ 主题 / 语言切换 ═══ */
+  function toggleLang() {
+    currentLang = currentLang === 'zh' ? 'en' : 'zh';
+    lsSet('lang', currentLang);
+    applyStaticI18n();
+    renderSidebar();
+    renderMain();
+    refreshModal();
+    restoreFilterActive();
+  }
+  function restoreFilterActive() {
+    var btns = document.querySelectorAll('.filter-btn');
+    for (var i = 0; i < btns.length; i++) {
+      var cat = btns[i].getAttribute('data-cat');
+      btns[i].classList.toggle('active', cat === state.filter);
+    }
+    var sk = document.querySelectorAll('.sk-cat-btn');
+    for (var j = 0; j < sk.length; j++) sk[j].classList.toggle('active', sk[j].getAttribute('data-cat') === state.skillCat);
+  }
+
+  /* ═══ 搜索 ═══ */
+  function setQuery(v) {
+    state.q = v;
+    var a = document.getElementById('sbSearch');
+    var b = document.getElementById('topSearch');
+    if (a && a.value !== v) a.value = v;
+    if (b && b.value !== v) b.value = v;
+    if (state.view === 'skills') { renderSidebar(); renderSkills(); }
+    else if (state.view === 'detail') { renderSidebar(); }
+    else { renderSidebar(); renderDashboard(); }
+  }
+  var qTimer = null;
+  function onQueryInput(v) {
+    if (qTimer) clearTimeout(qTimer);
+    qTimer = setTimeout(function () { setQuery(v); }, 110);
+  }
+
+  /* ═══ 侧边栏开合 ═══ */
+  function isMobile() { return window.matchMedia('(max-width:768px)').matches; }
+  function toggleSidebar() {
+    var sb = document.getElementById('sidebar');
+    var main = document.getElementById('main');
+    var scrim = document.getElementById('scrim');
+    if (isMobile()) {
+      var open = sb.classList.toggle('open');
+      if (scrim) scrim.classList.toggle('on', open);
+      return;
+    }
+    var hidden = sb.classList.toggle('hidden');
+    main.classList.toggle('expanded', hidden);
+  }
+  function closeDrawer() {
+    var sb = document.getElementById('sidebar');
+    var scrim = document.getElementById('scrim');
+    sb.classList.remove('open');
+    if (scrim) scrim.classList.remove('on');
+  }
+
+  /* ═══ 滚动定位 ═══ */
+  function scrollToStep(n) {
+    var el = document.querySelector('[data-step="' + n + '"]');
+    if (!el) return;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.remove('step-flash');
+    void el.offsetWidth;
+    el.classList.add('step-flash');
+  }
+  function focusStep(id, n) {
+    var g = guideById(id);
+    if (!g) return;
+    setStepOpen(id, n, true);
+    renderDetail(id);
+    setTimeout(function () { scrollToStep(n); }, 60);
+  }
+
+  /* ═══ 路由 ═══ */
+  function parseHash(h) {
+    h = (h || '').replace(/^#/, '');
+    if (!h) return { view: 'dashboard' };
+    if (h === 'skills') return { view: 'skills' };
+    if (h.indexOf('guide-') === 0) {
+      var rest = h.slice(6);
+      var m = rest.match(/^([^-]+)-step-(\d+)$/);
+      if (m) return { view: 'detail', id: m[1], step: parseInt(m[2], 10) };
+      return { view: 'detail', id: rest };
+    }
+    return { view: 'dashboard' };
+  }
+  function goHome() {
+    if (location.hash) history.pushState(null, '', location.pathname + location.search);
+    state.view = 'dashboard';
+    state.guideId = null;
+    state.filter = 'all';
+    renderSidebar();
+    renderDashboard();
+    window.scrollTo(0, 0);
+  }
+  function goGuide(id) { location.hash = '#guide-' + id; }
+  function goSkills() { location.hash = '#skills'; }
+
+  function applyRoute(keepScroll) {
+    var r = parseHash(location.hash);
+    if (r.view === 'detail') {
+      var g = guideById(r.id);
+      if (!g) { goHome(); return; }
+      state.view = 'detail';
+      state.guideId = r.id;
+      state.filter = g.cat;
+      renderSidebar();
+      if (r.step) { setStepOpen(r.id, r.step, true); renderDetail(r.id); setTimeout(function () { scrollToStep(r.step); }, 60); }
+      else { renderDetail(r.id); if (!keepScroll) window.scrollTo(0, 0); }
+    } else if (r.view === 'skills') {
+      state.view = 'skills';
+      state.guideId = null;
+      state.filter = 'skills';
+      renderSidebar();
+      renderSkills();
+      if (!keepScroll) window.scrollTo(0, 0);
+    } else {
+      state.view = 'dashboard';
+      state.guideId = null;
+      if (state.filter === 'skills') state.filter = 'all';
+      renderSidebar();
+      renderDashboard();
+      if (!keepScroll) window.scrollTo(0, 0);
+    }
+    restoreFilterActive();
+    closeDrawer();
+    document.title = state.view === 'detail' && state.guideId
+      ? guideTitle(guideById(state.guideId)) + ' · ' + t('appName')
+      : t('docTitle');
+  }
+
+  /* ═══ 事件委托 ═══ */
+  function onClick(e) {
+    var el = e.target.closest ? e.target.closest('[data-act]') : null;
+    if (!el) return;
+    var act = el.getAttribute('data-act');
+    var id = el.getAttribute('data-id');
+    var n = parseInt(el.getAttribute('data-n'), 10);
+
+    if (act === 'open-guide') { e.preventDefault(); if (state.view === 'detail' && state.guideId === id) return; goGuide(id); return; }
+    if (act === 'toggle-done') { e.preventDefault(); e.stopPropagation(); setDone(id, !isDone(id)); rerender(); refreshModal(); return; }
+    if (act === 'step-jump') { e.preventDefault(); e.stopPropagation(); closeModal(); goGuide(id); setTimeout(function () { focusStep(id, n); }, 40); return; }
+    if (act === 'open-modal') { e.preventDefault(); e.stopPropagation(); openModal(id); return; }
+    if (act === 'close-modal') { e.preventDefault(); closeModal(); return; }
+    if (act === 'step-done') { e.preventDefault(); e.stopPropagation(); setStepDone(id, n, !isStepDone(id, n)); rerender(); refreshModal(); return; }
+    if (act === 'step-open') {
+      e.preventDefault();
+      setStepOpen(id, n, !isStepOpen(id, n));
+      var box = el.parentNode;
+      if (box) box.classList.toggle('is-open', isStepOpen(id, n));
+      return;
+    }
+    if (act === 'copy') {
+      e.preventDefault();
+      var cb = el.closest('.code-block');
+      var codeEl = cb ? cb.querySelector('code') : null;
+      if (codeEl) copyText(codeEl.textContent);
+      flashCopied(el);
+      return;
+    }
+    if (act === 'copy-skill') { e.preventDefault(); copyText(el.textContent); flashCopied(el); return; }
+    if (act === 'filter') {
+      e.preventDefault();
+      var cat = el.getAttribute('data-cat');
+      if (cat === 'skills') { goSkills(); return; }
+      state.filter = cat;
+      if (state.view !== 'dashboard') {
+        if (location.hash) history.pushState(null, '', location.pathname + location.search);
+        state.view = 'dashboard';
+        state.guideId = null;
+      }
+      renderSidebar();
+      renderDashboard();
+      restoreFilterActive();
+      return;
+    }
+    if (act === 'sk-cat') { e.preventDefault(); state.skillCat = el.getAttribute('data-cat'); renderSkills(); restoreFilterActive(); return; }
+    if (act === 'nav-skills') { e.preventDefault(); goSkills(); return; }
+    if (act === 'home') { e.preventDefault(); goHome(); return; }
+    if (act === 'sb-toggle') { e.preventDefault(); toggleSidebar(); return; }
+    if (act === 'close-drawer') { closeDrawer(); return; }
+    if (act === 'theme') { toggleTheme(); return; }
+    if (act === 'lang') { toggleLang(); return; }
+    if (act === 'share') { doShare(); return; }
+    if (act === 'export') { exportProgress(); return; }
+    if (act === 'import') { var f = document.getElementById('importFile'); if (f) { f.value = ''; f.click(); } return; }
+    if (act === 'reset') { resetProgress(); return; }
+    if (act === 'err-close') { var bar = document.getElementById('errBar'); if (bar) bar.classList.remove('on'); return; }
+  }
+  function flashCopied(btn) {
+    if (!btn || !btn.classList) return;
+    btn.classList.add('ok');
+    var old = btn.getAttribute('data-old');
+    if (!old) btn.setAttribute('data-old', btn.textContent);
+    btn.textContent = t('copied');
+    setTimeout(function () {
+      btn.classList.remove('ok');
+      var prev = btn.getAttribute('data-old');
+      if (prev) btn.textContent = prev;
+    }, 1800);
+  }
+
+  /* ═══ 键盘 ═══ */
+  function onKey(e) {
+    if (e.key === 'Escape') {
+      if (document.getElementById('modal').classList.contains('on')) closeModal();
+      else if (isMobile() && document.getElementById('sidebar').classList.contains('open')) closeDrawer();
+      return;
+    }
+    if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(el2tag(e.target))) {
+      var sb = document.getElementById('sbSearch');
+      if (sb) { e.preventDefault(); sb.focus(); }
+      return;
+    }
+    if (e.key === 'Enter') {
+      var tgt = e.target;
+      if (tgt && tgt.getAttribute && tgt.getAttribute('data-act') === 'step-open') { e.preventDefault(); tgt.click(); }
+    }
+  }
+  function el2tag(el) { return el && el.tagName ? el.tagName : ''; }
+
+  /* ═══ 时钟 ═══ */
+  function tick() {
+    var d = new Date();
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    var el = document.getElementById('clock');
+    if (el) el.textContent = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+
+  /* ═══ 全局错误条 ═══ */
+  window.onerror = function (msg, src, line, col) {
+    var bar = document.getElementById('errBar');
+    var m = document.getElementById('errMsg');
+    if (m) m.textContent = String(msg) + ' @' + (line || 0) + ':' + (col || 0);
+    if (bar) bar.classList.add('on');
+    if (window.console && console.error) console.error(msg, src, line, col);
+    return false;
+  };
+
+  /* ═══ init ═══ */
+  function init() {
+    if (lsGet('theme', 'dark') === 'light') document.documentElement.classList.add('light');
+    applyStaticI18n();
+    syncThemeIcon();
+
+    document.addEventListener('click', onClick);
+    document.addEventListener('keydown', onKey);
+
+    var sb = document.getElementById('sbSearch');
+    var ts = document.getElementById('topSearch');
+    if (sb) sb.addEventListener('input', function () { onQueryInput(this.value); });
+    if (ts) ts.addEventListener('input', function () { onQueryInput(this.value); });
+
+    var file = document.getElementById('importFile');
+    if (file) file.addEventListener('change', function () { importProgress(this.files && this.files[0]); });
+
+    window.addEventListener('hashchange', function () { applyRoute(); });
+    window.addEventListener('popstate', function () { applyRoute(); });
+    window.addEventListener('resize', function () {
+      if (!isMobile()) {
+        var scrim = document.getElementById('scrim');
+        if (scrim) scrim.classList.remove('on');
+        document.getElementById('sidebar').classList.remove('open');
+      }
+    });
+
+    applyRoute();
+    tick();
+    setInterval(tick, 1000);
+
+    var loading = document.getElementById('loading');
+    if (loading) {
+      loading.classList.add('gone');
+      setTimeout(function () { if (loading.parentNode) loading.parentNode.removeChild(loading); }, 420);
+    }
+  }
+
+  function boot() {
+    if (typeof GUIDES === 'undefined' || !GUIDES.length) {
+      var tries = 0;
+      var timer = setInterval(function () {
+        tries++;
+        if (typeof GUIDES !== 'undefined' && GUIDES.length) { clearInterval(timer); init(); }
+        else if (tries > 50) { clearInterval(timer); init(); }
+      }, 200);
+      return;
+    }
+    init();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

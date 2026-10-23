@@ -8,10 +8,10 @@ const config: Config = {
   tagline: 'The self-improving AI agent',
   favicon: 'img/favicon.ico',
 
-  // Fork deployment: https://agent.yyc3.vip via GitHub Pages
+  // Fork deployment: https://h-agent.yyc3.vip via GitHub Pages
   // (.github/workflows/deploy-pages.yml, CNAME from pubilc/CNAME).
   // Upstream ships under hermes-agent.nousresearch.com/docs/.
-  url: 'https://agent.yyc3.vip',
+  url: 'https://h-agent.yyc3.vip',
   baseUrl: '/',
 
   organizationName: 'YYC-Cube',

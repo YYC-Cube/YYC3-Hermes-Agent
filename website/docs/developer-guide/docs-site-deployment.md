@@ -7,7 +7,7 @@ description: How the YYC3 Hermes Agent fork deploys its docs site and brand asse
 # Docs Site Deployment
 
 This repository is a fork of [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent).
-It publishes its own docs site at **https://agent.yyc3.vip** (GitHub Pages, custom domain) under the
+It publishes its own docs site at **https://h-agent.yyc3.vip** (GitHub Pages, custom domain) under the
 **YYC3 Hermes Agent** brand, while keeping upstream attribution intact.
 
 ## Two deployment chains
@@ -44,6 +44,26 @@ domain root and copies `pubilc/CNAME` to `_site/CNAME`, then uploads via
 `actions/upload-pages-artifact` and deploys with `actions/configure-pages` +
 `actions/deploy-pages`. Custom domain + "Enforce HTTPS" are configured in the repo's
 Pages settings.
+
+## Landing page (offline operations hub)
+
+The domain root does **not** serve the Docusaurus homepage. It serves
+`pubilc/YYC3-HERMES-HUB-OFFLINE.html`, a single-file operations hub that is copied over the
+built `index.html` during staging:
+
+```bash
+cp pubilc/YYC3-HERMES-HUB-OFFLINE.html _site/index.html
+```
+
+| Concern | Rule |
+| --- | --- |
+| Docs home | `website/docs/index.mdx` (and its `i18n/zh-Hans` override) use `slug: /docs`, so the documentation overview lives at `/docs` |
+| Single file | CSS, markup, data and the zh/en dictionary are all inline — no CDN, no build step, no network requests |
+| Data source of truth | Edit `GUIDES` / `SKILLS` / `I18N` inside the file; markup is generated at runtime |
+| Escaping | Every data field interpolated into `innerHTML` goes through `escHtml()`; the data block must contain no `<!--` / `-->` and commands must avoid single quotes |
+| Verification | Two inline script blocks must pass `node --check`, and a real-engine (jsdom) load must render one card per guide with zero console errors |
+
+Keep the landing file and the staged copy byte-identical — do not hand-edit the artifact.
 
 ## Brand assets
 
