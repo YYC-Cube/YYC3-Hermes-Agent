@@ -781,8 +781,12 @@ def _kill_process_group_posix(proc) -> None:
             _wait_for_group_exit(proc, pgid, 2.0)
             with contextlib.suppress(subprocess.TimeoutExpired, OSError):
                 proc.wait(timeout=0.2)
-    except ProcessLookupError:
-        pass
+    except (ProcessLookupError, PermissionError):
+        # The group may have exited, or the OS may refuse to signal it (macOS
+        # returns EPERM for a group whose leader already left our session).
+        # Fall back to the direct child so a search cleanup never raises.
+        with contextlib.suppress(OSError):
+            proc.terminate()
     _sweep_escaped_descendants(descendants, pgid)
 
 

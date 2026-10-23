@@ -501,8 +501,11 @@ def _check_command_installation(should_fix: bool, f: Finding) -> None:
     _section("Command Installation")
     venv_bin = next((c for c in (PROJECT_ROOT / n / "bin" / "hermes" for n in ("venv", ".venv")) if c.exists()), None)
     if venv_bin is None:
-        check_warn("Venv entry point not found", "(hermes not in venv/bin/ or .venv/bin/ — reinstall with pip install -e '.[all]')")
-        return f.manual_issues.append(f"Reinstall entry point: cd {PROJECT_ROOT} && source venv/bin/activate && pip install -e '.[all]'")
+        # uv-managed venvs intentionally have no pip; recommending `pip install`
+        # would fall through to whatever pip is first on PATH (often a system or
+        # conda pip) and mutate the wrong environment.
+        check_warn("Venv entry point not found", "(no hermes entry point in PROJECT_ROOT/venv or .venv — run `uv sync --locked --extra all`)")
+        return f.manual_issues.append(f"Reinstall entry point: cd {PROJECT_ROOT} && uv sync --locked --extra all")
     check_ok(f"Venv entry point exists ({venv_bin.relative_to(PROJECT_ROOT)})")
     # Expected command link directory (mirrors install.sh logic).
     prefix = os.environ.get("PREFIX", "")
