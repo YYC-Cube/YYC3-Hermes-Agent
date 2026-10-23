@@ -13,10 +13,13 @@ provider, flip ``app.state.auth_required = True``, drive a ``TestClient``.
 from __future__ import annotations
 
 import time
+from typing import Any, cast
 
 import pytest
 
+from fastapi import Request
 from fastapi.testclient import TestClient
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from hermes_cli import web_server
 from hermes_cli.dashboard_auth import (
@@ -28,9 +31,14 @@ from hermes_cli.dashboard_auth import (
     clear_providers,
     register_provider,
 )
+from hermes_cli.dashboard_auth import routes as auth_routes
 from hermes_cli.dashboard_auth.cookies import SESSION_AT_COOKIE, SESSION_RT_COOKIE
 from hermes_cli.dashboard_auth.login_page import render_login_html
-from hermes_cli.dashboard_auth.routes import _reset_password_rate_limit
+from hermes_cli.dashboard_auth.routes import (
+    _PW_RATE_MAX_ATTEMPTS,
+    _reset_password_rate_limit,
+)
+from hermes_cli.web_server_lifecycle import _dashboard_forwarded_allow_ips
 from tests.hermes_cli.conftest_dashboard_auth import StubAuthProvider
 
 
@@ -372,4 +380,113 @@ class TestLoginPageRender:
             assert "/auth/password-login" not in html
         finally:
             clear_providers()
+
+
+# ---------------------------------------------------------------------------
+# Security hardening (upstream #133369 / #133367 / #133865 backport)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("rate_limited", [False, True])
+def test_oversized_provider_rejected_without_audit(
+    gated_app: TestClient, tmp_path, monkeypatch, rate_limited: bool,
+) -> None:
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    if rate_limited:
+        response = None
+        for _ in range(15):
+            response = gated_app.post(
+                "/auth/password-login",
+                json={"provider": "testpw", "username": "admin", "password": "WRONG"},
+            )
+        assert response is not None and response.status_code == 429
+    path = tmp_path / "logs" / "dashboard-auth.log"
+    before = path.read_text() if path.exists() else ""
+    provider = "p" * 129
+    response = gated_app.post(
+        "/auth/password-login",
+        json={"provider": provider, "username": "admin", "password": "WRONG"},
+    )
+    after = path.read_text() if path.exists() else ""
+    assert response.status_code == 422
+    assert provider not in after
+    assert after == before
+
+
+def test_distinct_ip_buckets_are_capped(monkeypatch):
+    _reset_password_rate_limit()
+    monkeypatch.setattr(auth_routes, "_PW_RATE_MAX_BUCKETS", 3)
+
+    for i in range(5):
+        assert auth_routes._password_rate_limited(f"192.0.2.{i}") is False
+
+    assert list(auth_routes._pw_attempts.keys()) == [
+        "192.0.2.2",
+        "192.0.2.3",
+        "192.0.2.4",
+    ]
+
+
+def test_expired_buckets_pruned_before_evicting_live_bucket(monkeypatch):
+    _reset_password_rate_limit()
+    monkeypatch.setattr(auth_routes, "_PW_RATE_MAX_BUCKETS", 2)
+    now = time.monotonic()
+    auth_routes._pw_attempts["expired"] = auth_routes.deque([
+        now - auth_routes._PW_RATE_WINDOW_SEC - 1,
+    ])
+    auth_routes._pw_attempts["live"] = auth_routes.deque([now])
+
+    assert auth_routes._password_rate_limited("192.0.2.99") is False
+
+    assert "expired" not in auth_routes._pw_attempts
+    assert "live" in auth_routes._pw_attempts
+    assert "192.0.2.99" in auth_routes._pw_attempts
+
+
+@pytest.mark.parametrize("peer", [("203.0.113.7", 12345), None])
+def test_client_ip_uses_asgi_peer_not_forwarded_header(peer: tuple[str, int] | None) -> None:
+    from hermes_cli.dashboard_auth.request_utils import client_ip
+
+    request = Request({
+        "type": "http", "client": peer,
+        "headers": [(b"x-forwarded-for", b"198.51.100.1, 192.0.2.1")],
+    })
+    assert client_ip(request) == (peer[0] if peer else "")
+
+
+@pytest.mark.parametrize(
+    "peer, forwarded_suffix",
+    [("203.0.113.9", ""), ("127.0.0.1", ", 203.0.113.9"),
+     ("172.18.0.9", ", 203.0.113.9")],
+    ids=["direct", "loopback-proxy", "configured-proxy"],
+)
+def test_spoofed_x_forwarded_for_does_not_reset_rate_limit(
+    gated_app: TestClient, peer: str, forwarded_suffix: str,
+) -> None:
+    trusted = _dashboard_forwarded_allow_ips({"trusted_proxies": ["172.18.0.0/16"]})
+    app = cast(Any, ProxyHeadersMiddleware(cast(Any, web_server.app), trusted_hosts=trusted))
+    client = TestClient(app, base_url=str(gated_app.base_url), client=(peer, 50000))
+    for i in range(_PW_RATE_MAX_ATTEMPTS):
+        resp = client.post(
+            "/auth/password-login",
+            headers={"X-Forwarded-For": f"198.51.100.{i}{forwarded_suffix}"},
+            json={"provider": "testpw", "username": "admin", "password": "WRONG"},
+        )
+        assert resp.status_code == 401
+
+    blocked = client.post(
+        "/auth/password-login",
+        headers={"X-Forwarded-For": f"198.51.100.250{forwarded_suffix}"},
+        json={"provider": "testpw", "username": "admin", "password": "hunter2"},
+    )
+    assert blocked.status_code == 429
+
+    other_peer = peer if forwarded_suffix else "203.0.113.10"
+    other_client = TestClient(app, base_url=str(gated_app.base_url), client=(other_peer, 50001))
+    allowed = other_client.post(
+        "/auth/password-login",
+        headers={"X-Forwarded-For": "203.0.113.10"},
+        json={"provider": "testpw", "username": "admin", "password": "hunter2"},
+    )
+    assert allowed.status_code == 200
 
