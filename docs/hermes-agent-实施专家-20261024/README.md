@@ -25,13 +25,14 @@ P0-1/2/3（运行时、uv、brotli）与 P0-4（4 个 Dashboard 认证安全 bac
 | [02-执行日志与进度跟踪.md](./02-执行日志与进度跟踪.md) | 本次会话逐项操作日志、验证证据、失败归因 | 实时 |
 | [03-总结文档与状态同步.md](./03-总结文档与状态同步.md) | 收尾总结、关键决策、下次会话恢复指南 | 已完成 |
 | [04-P0-5线上安全头执行手册.md](./04-P0-5线上安全头执行手册.md) | Cloudflare 代理、Transform Rules、验收与回滚 | 待执行 |
+| [05-下一阶段衔接与演进规划.md](./05-下一阶段衔接与演进规划.md) | M4→M8 节点规划：P0-5 收口、P1 收尾、测试归零、0.22 评估、P2 自动化；终点判据 | 已规划 |
 | [logs/20261024-execution.jsonl](./logs/20261024-execution.jsonl) | 机器可读执行日志（一行一个事件） | 已完成 |
 
 ## 当前基线（2026-10-24 04:18 CST）
 
 | 项 | 值 |
 | --- | --- |
-| 代码版本 | `0.21.3`，本地 git `bfe1ae96` |
+| 代码版本 | `0.21.3`，本地 git `881c8b5b`（P0/P1 五主题提交已入库，**待推送**） |
 | 上游 | `v0.22.5`（2026-10-23） |
 | 运行时 venv | `~/.hermes/hermes-agent/venv`，**109 包 / 0 版本偏差 / 0 OSV** |
 | uv | **0.13.5**（CI 口径 0.9.28 已验证可解析新锁） |
@@ -71,11 +72,11 @@ curl -sS -I https://h-agent.yyc3.vip/ | grep -Ei \
   "strict-transport|content-security|x-frame|x-content-type|referrer-policy|permissions-policy"
 ```
 
-## 下次优先 TOP 3
+## 下次优先 TOP 3（详见 [05-下一阶段衔接与演进规划.md](./05-下一阶段衔接与演进规划.md)）
 
-1. **P0-5**：在 Cloudflare 开启代理并应用 [00 报告附录 C](./00-生产闭环终极审核与演进建议报告.md) 的 Transform Rules；验收 `curl -I` 可见 5 类头。
-2. **P1**：补 SBOM（CycloneDX）与发布来源证明；把 `ty` 变更文件设为阻塞。
-3. **P2**：评估上游 0.22 结构重构（1.06M→698K 行），先做 0.21.7 安全补丁对齐。
+1. **M4 · P0-5 收口**：推送五提交触发 Pages 部署 → 阿里云控制台切 NS → `scripts/p05-cloudflare-configure.sh --apply` → `curl -I` 验收 5 类头。
+2. **M5 · P1 收尾**：npm audit 官方源脚本、双 SBOM（CycloneDX）、`ty` 变更文件阻塞、安全公告接 OSV 实时源。
+3. **M6 → M8**：测试归零（18 并发隔离/9 macOS/4 可选依赖/6 triage + Compose bridge）→ 上游 0.22 评估 → P2 演进自动化。
 
 ## 绝对不要做
 
