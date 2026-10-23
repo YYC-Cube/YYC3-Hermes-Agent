@@ -1,3 +1,4 @@
+import { interpolate } from "@yyc3/i18n-core/browser";
 import { en } from "@/i18n/en";
 
 /** Fill the `{what}` / `{detail}` placeholders of the "could not load" card copy.
@@ -10,7 +11,7 @@ export function loadErrorCopy(
   const loadFailed = t.loadFailed ?? en.common.loadFailed!;
   const loadFailedDetails = t.loadFailedDetails ?? en.common.loadFailedDetails!;
   return {
-    title: loadFailed.replace("{what}", what),
-    details: detail ? loadFailedDetails.replace("{detail}", detail) : null,
+    title: interpolate(loadFailed, { what }),
+    details: detail ? interpolate(loadFailedDetails, { detail }) : null,
   };
 }

@@ -1,6 +1,7 @@
 import { applyDocumentLocale, LOCALE_ENDONYMS } from "@hermes/shared/i18n";
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { Locale, Translations } from "./types";
+import { detectSystemAppLocale } from "./engine";
 import { en } from "./en";
 import { zh } from "./zh";
 import { zhHant } from "./zh-hant";
@@ -60,7 +61,7 @@ function getInitialLocale(): Locale {
   } catch {
     // SSR or privacy mode
   }
-  return "en";
+  return detectSystemAppLocale();
 }
 
 interface I18nContextValue {

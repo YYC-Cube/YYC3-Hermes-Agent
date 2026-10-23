@@ -17,6 +17,7 @@
   "dependencies": {
     "@hermes/shared": "file:../apps/shared",
     "@nous-research/ui": "0.18.2",
+    "@yyc3/i18n-core": "3.0.2",
     "@observablehq/plot": "0.6.17",
     "@react-three/fiber": "9.6.1",
     "@tailwindcss/vite": "4.3.3",
