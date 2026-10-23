@@ -1,0 +1,119 @@
+name: Deploy Pages
+
+# Fork deployment for https://agent.yyc3.vip (GitHub Pages + custom domain).
+# The upstream deploy-site.yml is gated to NousResearch/hermes-agent (Vercel +
+# GitHub App token + scheduled skills-index crawl); this workflow is the fork
+# counterpart: plain GITHUB_TOKEN, live upstream skills index (no crawl), and
+# the pubilc/CNAME custom-domain file staged at the artifact root.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'pubilc/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy-docs:
+    if: github.repository == 'YYC-Cube/YYC3-Hermes-Agent'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: grab npm 12
+        run: npm i -g npm@12
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: Install PyYAML for skill extraction
+        run: pip install pyyaml==6.0.2 httpx==0.28.1
+
+      # The unified skills catalog is crawled on the upstream schedule; fork
+      # deploys reuse the live index (one CDN GET) instead of burning GitHub
+      # API quota on a fresh crawl. A minimal empty index keeps the build
+      # green when the upstream site is unreachable — extract-skills.py still
+      # publishes full metadata for the in-repo skills.
+      - name: Reuse upstream skills index (no crawl)
+        run: |
+          set -euo pipefail
+          INDEX_PATH="website/static/api/skills-index.json"
+          mkdir -p "$(dirname "$INDEX_PATH")"
+          if curl -fsSL --retry 3 --retry-delay 5 \
+            "https://hermes-agent.nousresearch.com/docs/api/skills-index.json" \
+            -o "$INDEX_PATH"; then
+            python3 -c "import json; print('skills index ready:', len(json.load(open('$INDEX_PATH')).get('skills', [])), 'skills')"
+          else
+            echo "::warning::Upstream skills index unavailable; deploying with an empty external catalog"
+            printf '{"skills": []}\n' > "$INDEX_PATH"
+          fi
+
+      - name: Extract skill metadata for dashboard
+        run: python3 website/scripts/extract-skills.py
+
+      # Default mode is reuse-only: one CDN GET for the live star cache, else
+      # disk, else an empty map. Never touches the GitHub API.
+      - name: Reuse plugin GitHub stars (no API calls)
+        run: python3 website/scripts/fetch-plugin-stars.py
+
+      - name: Extract plugin catalog for the Plugins page
+        run: python3 website/scripts/extract-plugins.py
+
+      - name: Regenerate per-skill docs pages + catalogs
+        run: python3 website/scripts/generate-skill-docs.py
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: website
+
+      - name: Build Docusaurus
+        run: npm run build
+        working-directory: website
+
+      - name: Stage deployment
+        run: |
+          mkdir -p _site
+          cp -r website/build/* _site/
+          # llms.txt / llms-full.txt are also published at the site root
+          # because some agents and IDE plugins probe the classic root-level
+          # path rather than the baseUrl-prefixed one.
+          if [ -f website/build/llms.txt ]; then
+            cp website/build/llms.txt _site/llms.txt
+          fi
+          if [ -f website/build/llms-full.txt ]; then
+            cp website/build/llms-full.txt _site/llms-full.txt
+          fi
+          # Custom domain: the CNAME file must sit at the artifact root or
+          # GitHub Pages drops the domain binding on every deploy.
+          cp pubilc/CNAME _site/CNAME
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4
