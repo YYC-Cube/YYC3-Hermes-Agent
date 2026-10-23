@@ -1,12 +1,15 @@
 name: Lint (ruff + ty)
 
-# Two things here:
+# Three things here:
 #   1. Advisory diff — ruff + ty diagnostics as a diff vs the target branch.
 #      Writes a Markdown summary to the run page. Exit zero always.
 #   2. Blocking ``ruff check .`` — enforces the explicit rules in
 #      ``[tool.ruff.lint.select]`` (currently PLW1514). Failure blocks merge.
 #      Separate job so the advisory diff still runs even when enforcement
 #      fails.
+#   3. Blocking new ty diagnostics — diagnostics that exist on HEAD but not
+#      on the base fail the lint-diff job (pre-existing ones stay advisory).
+#      Runs after the summary step, so the report still lands when it fails.
 #
 # CI-sensitive file review was previously here as a ``ci-review`` job but
 # has moved to ``review-labels.yml`` so it can be rerun independently.
@@ -117,6 +120,17 @@ jobs:
             --head-ref  "$HEAD_REF" \
             --output    .lint-reports/summary.md
           cat .lint-reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      # New ty diagnostics block the PR; pre-existing ones stay advisory (summary above).
+      # Runs last so the summary still lands in $GITHUB_STEP_SUMMARY when this fails.
+      - name: Block on new ty diagnostics
+        run: |
+          python scripts/lint_diff.py \
+            --base-ruff .lint-reports/base/ruff.json \
+            --head-ruff .lint-reports/head/ruff.json \
+            --base-ty   .lint-reports/base/ty.json \
+            --head-ty   .lint-reports/head/ty.json \
+            --fail-on-new-ty
 
   ruff-blocking:
     # Enforce the rules in pyproject.toml [tool.ruff.lint.select]. Currently

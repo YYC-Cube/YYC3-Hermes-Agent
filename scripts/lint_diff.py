@@ -172,6 +172,12 @@ def main() -> int:
     ap.add_argument(
         "--output", type=Path, help="Write summary to this file instead of stdout"
     )
+    ap.add_argument(
+        "--fail-on-new-ty",
+        action="store_true",
+        help="Exit 1 when HEAD introduces ty diagnostics absent from the base report "
+        "(pre-existing diagnostics stay advisory)",
+    )
     args = ap.parse_args()
 
     base_ruff_raw = _load_json(args.base_ruff)
@@ -200,6 +206,26 @@ def main() -> int:
         args.output.write_text(summary, encoding="utf-8")
     else:
         print(summary)
+
+    if args.fail_on_new_ty:
+        if not base_ty_avail:
+            print(
+                "--fail-on-new-ty: base ty report unavailable; skipping the block.",
+                file=sys.stderr,
+            )
+        else:
+            new_ty, _, _ = _diff(base_ty, head_ty)
+            if new_ty:
+                print(
+                    f"::error::{len(new_ty)} new ty diagnostic(s) introduced by this change — "
+                    "fix them (pre-existing ones stay advisory):",
+                    file=sys.stderr,
+                )
+                for e in new_ty[:20]:
+                    print(f"  {e['path']}:{e['line']}: [{e['rule']}] {e['message']}", file=sys.stderr)
+                if len(new_ty) > 20:
+                    print(f"  ... and {len(new_ty) - 20} more", file=sys.stderr)
+                return 1
     return 0
 
 
