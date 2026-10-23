@@ -43,6 +43,7 @@
     "js-yaml": "4.3.2",
     "dompurify": "3.4.17",
     "mermaid": "11.16.1",
+    "katex": "0.18.2",
     "image-size": "npm:@nous-research/image-size@2.0.3",
     "shell-quote": "1.12.0",
     "proxy-addr": "2.0.8",
