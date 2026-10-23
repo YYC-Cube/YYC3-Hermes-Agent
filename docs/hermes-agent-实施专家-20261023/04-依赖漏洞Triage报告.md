@@ -269,4 +269,4 @@ category: report
 | electron | medium ×10 / low ×6 | 暂缓至 Electron 42 专项 |
 | http-cache-semantics / extract-zip / braces | high / high / high | 无修复版本，接受风险 |
 
-> Batch A/B/C/D/E 均已完成；剩余待办为 Dependabot 重扫复核与 T4/T6–T11/T13。
+> Batch A/B/C/D/E 均已完成；Dependabot 重扫 94 → **71**（0 critical / 20 high / 40 medium / 11 low）。代码侧可修项已清零，剩余为暂缓项与无修复版本。
