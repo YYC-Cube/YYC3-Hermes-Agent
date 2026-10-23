@@ -113,13 +113,13 @@ class TestRunAudit:
         plugin.mkdir(parents=True)
         (plugin / "requirements.txt").write_text("alpha==1.0.0\nbeta==2.0.0\n")
 
-        def fake_batch(comps):
+        def fake_batch(comps, timeout=sa.HTTP_TIMEOUT):
             return {
                 comps[0]: ["LOW-1"],
                 comps[1]: ["CRIT-1"],
             }
 
-        def fake_details(ids):
+        def fake_details(ids, timeout=sa.HTTP_TIMEOUT):
             return {
                 "LOW-1": sa.Vulnerability(osv_id="LOW-1", severity="LOW", summary="low"),
                 "CRIT-1": sa.Vulnerability(osv_id="CRIT-1", severity="CRITICAL", summary="crit"),
@@ -167,7 +167,7 @@ class TestExitCodes:
             return [sa.Component(name="pkg", version="1.0", ecosystem="PyPI", source="venv")]
 
         monkeypatch.setattr(sa, "_discover_venv", counting_discover_venv)
-        monkeypatch.setattr(sa, "_osv_query_batch", lambda comps: {})
+        monkeypatch.setattr(sa, "_osv_query_batch", lambda comps, timeout=sa.HTTP_TIMEOUT: {})
         sa.cmd_security_audit(self._build_args(skip_venv=False))
         capsys.readouterr()
         assert calls["venv"] == 1
@@ -189,12 +189,12 @@ class TestExitCodes:
         )
         monkeypatch.setattr(sa, "_discover_venv", lambda: [fake_comp])
         monkeypatch.setattr(
-            sa, "_osv_query_batch", lambda comps: {fake_comp: ["X-1"]}
+            sa, "_osv_query_batch", lambda comps, timeout=sa.HTTP_TIMEOUT: {fake_comp: ["X-1"]}
         )
         monkeypatch.setattr(
             sa,
             "_osv_fetch_details",
-            lambda ids: {
+            lambda ids, timeout=sa.HTTP_TIMEOUT: {
                 "X-1": sa.Vulnerability(
                     osv_id="X-1",
                     severity="HIGH",

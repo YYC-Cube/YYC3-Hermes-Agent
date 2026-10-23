@@ -12,6 +12,7 @@ import json
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -166,22 +167,33 @@ def _discover_mcp() -> list[Component]:
 _HTTP_ERRORS = (urllib.error.URLError, TimeoutError, ConnectionError)
 
 
-def _http_json(url: str, payload: Optional[dict] = None) -> dict:
-    """GET ``url`` (or POST ``payload`` as JSON when given) and decode the JSON body."""
+_OSV_API_HOSTS = frozenset({"api.osv.dev"})
+
+
+def _http_json(url: str, payload: Optional[dict] = None, timeout: float = HTTP_TIMEOUT) -> dict:
+    """GET ``url`` (or POST ``payload`` as JSON when given) and decode the JSON body.
+
+    Pinned to the OSV API origin: every call site passes a module-level ``OSV_*``
+    constant (``vid`` only ever lands in the path), and the allowlist keeps a
+    future call site from silently aiming this helper at another host or scheme.
+    """
+    split = urllib.parse.urlsplit(url)
+    if split.scheme != "https" or split.hostname not in _OSV_API_HOSTS:
+        raise ValueError(f"refusing non-OSV URL: {url}")
     req = urllib.request.Request(url, method="GET") if payload is None else urllib.request.Request(
         url, data=json.dumps(payload).encode("utf-8"), method="POST", headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def _osv_query_batch(components: list[Component]) -> dict[Component, list[str]]:
+def _osv_query_batch(components: list[Component], timeout: float = HTTP_TIMEOUT) -> dict[Component, list[str]]:
     """Return {component -> [osv_id, ...]} for components with any vulns."""
     findings: dict[Component, list[str]] = {}
     for chunk_start in range(0, len(components), OSV_BATCH_MAX):
         chunk = components[chunk_start:chunk_start + OSV_BATCH_MAX]
         payload = {"queries": [{"package": {"name": c.name, "ecosystem": c.ecosystem}, "version": c.version} for c in chunk]}
         try:
-            resp = _http_json(OSV_BATCH_URL, payload)
+            resp = _http_json(OSV_BATCH_URL, payload, timeout=timeout)
         except _HTTP_ERRORS as exc:
             raise RuntimeError(f"OSV batch query failed: {exc}") from exc
         for comp, result in zip(chunk, resp.get("results") or []):
@@ -208,11 +220,11 @@ def _osv_fixed_versions(record: dict) -> list[str]:
     return list(dict.fromkeys(fixes))  # dedupe, preserve order
 
 
-def _osv_fetch_details(vuln_ids: Iterable[str]) -> dict[str, Vulnerability]:
+def _osv_fetch_details(vuln_ids: Iterable[str], timeout: float = HTTP_TIMEOUT) -> dict[str, Vulnerability]:
     """Fetch summary/severity for each unique vuln id, in parallel."""
     def _fetch_one(vid: str) -> Vulnerability:
         try:
-            rec = _http_json(OSV_VULN_URL.format(vid=vid))
+            rec = _http_json(OSV_VULN_URL.format(vid=vid), timeout=timeout)
         except _HTTP_ERRORS:
             return Vulnerability(osv_id=vid)
         return Vulnerability(vid, _osv_severity_from_record(rec), (rec.get("summary") or "").strip(), _osv_fixed_versions(rec))
@@ -233,16 +245,19 @@ def _discover_components(
     return [c for skip, discover in sources if not skip for c in discover()]
 
 
-def run_audit(*, components: Optional[list[Component]] = None, **discover_kwargs) -> list[Finding]:
+def run_audit(
+    *, components: Optional[list[Component]] = None, http_timeout: float = HTTP_TIMEOUT, **discover_kwargs
+) -> list[Finding]:
     """Query OSV for ``components`` (or discover them with ``discover_kwargs`` when None; passing
     an already-discovered list avoids scanning the venv/plugins/MCP config a second time).
+    ``http_timeout`` bounds each request; callers like doctor use a shorter one than the CLI.
     """
     if components is None:
         components = _discover_components(**discover_kwargs)
-    raw = _osv_query_batch(components) if components else {}
+    raw = _osv_query_batch(components, timeout=http_timeout) if components else {}
     if not raw:
         return []
-    details = _osv_fetch_details(vid for ids in raw.values() for vid in ids)
+    details = _osv_fetch_details((vid for ids in raw.values() for vid in ids), timeout=http_timeout)
     findings = [Finding(comp, details.get(vid) or Vulnerability(osv_id=vid)) for comp, ids in raw.items() for vid in ids]
     findings.sort(key=lambda f: (
         -SEVERITY_ORDER.get(f.vuln.severity, 0), f.component.source, f.component.name.lower(), f.vuln.osv_id

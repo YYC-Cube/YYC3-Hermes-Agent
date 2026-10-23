@@ -426,6 +426,58 @@ def _check_security_advisories(should_fix: bool, f: Finding) -> None:
             check_warn(f"{h.package}=={h.installed_version} still installed (advisory {h.advisory.id} acknowledged)")
 
 
+_OSV_DOCTOR_TIMEOUT = 10.0  # doctor stays interactive; the CLI default (20s) is too leisurely here
+
+
+@doctor_check("Dependency vulnerability scan failed: {e}")
+def _check_dependency_vulnerabilities(should_fix: bool, f: Finding) -> None:
+    """OSV scan of venv + plugin pins + MCP launchers — the same source as
+    ``hermes security-audit``, served through its 24h cache. Interactive runs
+    refresh the cache; piped runs (and the test suite) read it without network.
+    """
+    import urllib.error
+
+    from hermes_cli import security_audit_cache
+    from hermes_cli.security_audit import SEVERITY_ORDER, _discover_components, run_audit
+
+    cached = security_audit_cache.read_cache()
+    if cached is None and sys.stdout.isatty():
+        try:
+            components = _discover_components()
+            findings = run_audit(components=components, http_timeout=_OSV_DOCTOR_TIMEOUT)
+        except (urllib.error.URLError, TimeoutError, ConnectionError, RuntimeError):
+            cached = security_audit_cache.read_cache_any()
+            if cached is None:
+                return check_warn("OSV dependency scan unavailable (offline)",
+                                  "run `hermes security-audit` when online")
+        else:
+            scanned_at = security_audit_cache.write_cache(findings, component_count=len(components))
+            cached = (findings, len(components), scanned_at)
+    if cached is None:
+        if security_audit_cache.read_cache_any() is None:
+            return check_warn("OSV dependency scan not cached yet (non-interactive run)",
+                              "run `hermes doctor` in a terminal once to generate the cache")
+        return check_warn("OSV dependency scan cache is stale", "run `hermes doctor` in a terminal to refresh it")
+
+    findings, component_count, scanned_at = cached
+    if not findings:
+        return check_ok(f"No known vulnerabilities in {component_count} components", f"(OSV scan {scanned_at})")
+    high = [x for x in findings if SEVERITY_ORDER.get(x.vuln.severity, 0) >= SEVERITY_ORDER["HIGH"]]
+    lower = len(findings) - len(high)
+    for x in high[:10]:
+        fixed = ", ".join(x.vuln.fixed_versions[:3]) or "no fixed version yet"
+        _fail_and_issue(
+            f"{x.component.name}=={x.component.version} — {x.vuln.osv_id} ({x.vuln.severity})",
+            f"({x.component.source}; OSV scan {scanned_at})",
+            f"Upgrade {x.component.name} (fixed in: {fixed}); then `uv lock` + `uv sync --locked`. Full list: `hermes security-audit`.",
+            f.manual_issues,
+        )
+    if len(high) > 10:
+        print(f"    … and {len(high) - 10} more — full list: `hermes security-audit`")
+    if lower:
+        check_warn(f"{lower} lower-severity OSV finding(s)", "review with `hermes security-audit`")
+
+
 @doctor_check()
 def _check_python_environment(should_fix: bool, f: Finding) -> None:
     """Interpreter, linked SQLite, venv, macOS TCC anchors/FDA/grants, version-file drift."""
