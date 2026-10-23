@@ -32,6 +32,13 @@ npm ci
 npm run build          # outputs build/ (zh-Hans nested, en at root)
 ```
 
+> **Keep lockfiles on the official registry.** npm ≥ 11.6 rejects packages whose `resolved`
+> URL points at a different host than the configured registry (`EALLOWREMOTE: Fetching
+> packages of type "remote" have been disabled`). If your global npm registry is a mirror
+> (e.g. `registry.npmmirror.com`), `npm install`/`npm update` will write mirror tarball URLs
+> into `package-lock.json` and break CI with `npm ci`. After local installs, check and
+> repoint: `grep -c npmmirror package-lock.json` should be `0`.
+
 `deploy-pages.yml` stages the language-prefixed build plus `llms.txt` into `_site/` at the
 domain root and copies `pubilc/CNAME` to `_site/CNAME`, then uploads via
 `actions/upload-pages-artifact` and deploys with `actions/configure-pages` +
