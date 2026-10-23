@@ -74,9 +74,11 @@ curl -sS -I https://h-agent.yyc3.vip/ | grep -Ei \
 
 ## 下次优先 TOP 3（详见 [05-下一阶段衔接与演进规划.md](./05-下一阶段衔接与演进规划.md)）
 
-1. **M4 · P0-5 收口**：推送五提交触发 Pages 部署 → 阿里云控制台切 NS → `scripts/p05-cloudflare-configure.sh --apply` → `curl -I` 验收 5 类头。
-2. **M5 · P1 收尾**：npm audit 官方源脚本、双 SBOM（CycloneDX）、`ty` 变更文件阻塞、安全公告接 OSV 实时源。
-3. **M6 → M8**：测试归零（18 并发隔离/9 macOS/4 可选依赖/6 triage + Compose bridge）→ 上游 0.22 评估 → P2 演进自动化。
+1. **M4 · P0-5 收口**：用户在「全区 NS 迁移（灰云默认）/ 子域级 CNAME 接入 CDN / meta 兜底接受 2/5」中决策并操作 → `scripts/p05-cloudflare-configure.sh --apply` → `curl -I` 验收。
+2. **M6 · 测试归零**：18 并发隔离 + 9 macOS marker + 4 可选依赖 importorskip + 6 triage；Compose 改 bridge。
+3. **M7→M8**：上游 0.22 评估（`06-` 报告）→ P2 演进自动化（preflight、上游周同步、漂移告警）。
+
+> M5 已完成（2026-10-24）：双 SBOM、ty 新增诊断阻塞、doctor OSV 依赖漏洞检查（24h 缓存）、npm 审计双侧归零（zod 4.6.7 / body-parser 1.20.9）。
 
 ## 绝对不要做
 
