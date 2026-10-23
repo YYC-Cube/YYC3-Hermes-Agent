@@ -269,4 +269,46 @@ category: report
 | electron | medium ×10 / low ×6 | 暂缓至 Electron 42 专项 |
 | http-cache-semantics / extract-zip / braces | high / high / high | 无修复版本，接受风险 |
 
-> Batch A/B/C/D/E 均已完成；Dependabot 重扫 94 → **71**（0 critical / 20 high / 40 medium / 11 low）。代码侧可修项已清零，剩余为暂缓项与无修复版本。
+## 十五、执行记录（Batch F）
+
+2026-10-23 已完成 Batch F（Batch E 暂缓项专项回归 + 既有残留清零）。Batch E 列为"暂缓"的 6 项经逐一回归后全部落地：
+
+### 修复总表
+
+| 包 | 范围 | 变更 | GHSA / 依据 | 方式 |
+| --- | --- | --- | --- | --- |
+| opentelemetry-api / -sdk / exporter-otlp | Python（export.otlp extra 三件套锁步） | 1.39.1 → 1.45.1 | GHSA-xcq7-p3pf-p88h | `lazy_deps.py` pin + `uv lock` |
+| mcp | Python（tool.computer_use extra） | 2.0.0 → 2.2.0 | GHSA-84m7-p3x7-pcfv（StreamableHTTP 会话无界累积） | `pyproject.toml` + `lazy_deps.py` 双处 pin 同步 + `uv lock` |
+| oauthlib | Python 传递依赖 | 3.3.1 → 4.0.0 | GHSA-xpv3-w29h-x7cv + GHSA-hj66-6f7g-4r5v | `uv lock`（无直接声明，随锁升级） |
+| mistralai | Python（tts/stt providers） | 2.4.8 → 2.9.4 | 连带升级 | `lazy_deps.py` pin + `uv lock` |
+| electron | desktop devDependency | 41.10.6 → 42.11.9 | 关闭 7 项 advisory | `package.json` + lockfile |
+| katex | 根 override / desktop / bootstrap-installer | 0.16.47 → 0.18.2 | GHSA-238p-pmpm-9mq7 | override + `npm update katex` 落锁 |
+
+- **mistralai 连带升级的必要性**：2.4.8 对 `opentelemetry-semantic-conventions` 设 `<0.61` 上限，阻塞 otlp extra 三件套升到 1.45.1；2.9.4（2.x 末版）解除该上限。红线注释已写入 `lazy_deps.py`：2.4.6 为恶意隔离版本，pin 永不低于 2.4.7。
+- **mcp pin 决策**：2.2.0 修复 GHSA-84m7-p3x7-pcfv 且保持 MCP revision 2026-07-28 语义，解除 Batch E "pyproject 明确 pin 2.0.0" 的约束；`pyproject.toml` 与 `lazy_deps.py` 同步 2.2.0，由守护测试强制一致。
+- **oauthlib 4.0.0 回归**：import 验证覆盖 requests-oauthlib 2.0.0 与 google_auth_oauthlib 授权链（Batch E 担忧的主版本兼容问题实测无碍）。
+
+### lazy_deps.py 既有残留修复
+
+守护测试暴露的 HEAD 既有漂移（与告警无关，一并清零）：`aiohttp` 共享 floor 及 4 处 pin `3.14.3 → 3.14.5`；`tool.vision` 的 `Pillow 12.3.0 → 13.0.0`。
+
+### 技术记录
+
+1. **npm 12 override 落锁缺陷**：向既有 lockfile 新增 override 后，`npm install` / `--force` / `--package-lock-only` 均报 "up to date" 不重解析——lockfile v3 根条目不持久化 `overrides`，npm 无法感知 override 变化。解法：`npm update katex` 定向重解析，override 下全树消费方需求统一为 0.18.2，嵌套 entry 消除、dedupe 到根 hoisted 条目。lockfile 净 diff 11+/11−，仅 katex/electron 相关，无意外漂移。
+2. **electron 42 lazy download 适配**：42 起 npm 包移除 postinstall（lockfile `hasInstallScript` 消失，新增 `install-electron` bin 指向 install.js），二进制改为首次运行 `electron` 时懒下载。CI 适配：`e2e-desktop.yml` 与 `js-tests.yml` 在 npm ci 后显式 `node node_modules/electron/install.js`（js-tests 仅 cache-miss 分支执行，dist 落于缓存树内）。nix 侧：实测 42 的 install.js 不再读 `ELECTRON_SKIP_BINARY_DOWNLOAD`，且 nix 构建运行时使用 nixpkgs electron（`desktop.nix` makeWrapper），故移除 `nix/lib.nix` 中该死配置并留 WHY 注释。
+
+### 验证证据
+
+- **Python**：LAZY_DEPS ↔ pyproject pin 同步守护测试 13 passed；`/tmp/hermes-batchf-venv` 中 mcp 2.2.0（`mcp_tool` + `mcp_oauth_manager` import）、oauthlib 4.0.0 + requests-oauthlib 2.0.0 + google_auth_oauthlib、mistralai 2.9.4（Mistral import）、httpx2 2.12.0、starlette 1.3.1 全部通过；`uv lock --check` 通过。
+- **npm**：根 `npm ci` 1332 packages exit 0（11s，无 postinstall 二进制下载，符合 lazy download 预期）；`katex 0.18.2` renderToString 冒烟通过；node-pty 原生绑定加载正常。
+- **Desktop**：`typecheck` / `build` 通过；`test:ui` 908 文件 / 8349 tests，仅 2 条既有 voice-prefs 断言失败（localStorage 迁移基线，与 Batch E 完全一致，非新增回归）。
+
+### 残留终态
+
+| 包 | 告警 | 处置 |
+| --- | --- | --- |
+| http-cache-semantics 4.2.0 | high | 无修复版本，接受风险（dev/构建期） |
+| braces 3.0.3 | high | 无修复版本，接受风险（dev/构建期） |
+| @electron-internal/extract-zip 1.0.5 | high | 无修复版本，接受风险（构建期） |
+
+> Batch A/B/C/D/E/F 均已完成；Batch E 时点的 6 项暂缓经专项回归后全部修复，代码侧可修项真正清零，剩余仅 3 项无修复版本（均非运行时暴露）。最终计数以 GitHub Dependabot 重扫为准。
