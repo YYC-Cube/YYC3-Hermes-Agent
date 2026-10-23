@@ -776,6 +776,7 @@ const sidebars: SidebarsConfig = {
       collapsed: true,
       items: [
         'developer-guide/contributing',
+        'developer-guide/docs-site-deployment',
         'developer-guide/worktree-ui-dev',
         {
           type: 'category',
