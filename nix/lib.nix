@@ -260,7 +260,10 @@ let
         src = mkNpmSrc dirs;
         npmConfigHook = patchedNpmConfigHook;
         npmRoot = ".";
-        ELECTRON_SKIP_BINARY_DOWNLOAD = 1;
+        # No ELECTRON_SKIP_BINARY_DOWNLOAD: electron ≥42 dropped its npm
+        # postinstall (lazy binary download), so there is nothing to skip;
+        # the desktop runtime binary is nixpkgs' electron (desktop.nix), not
+        # the npm one.
         passthru = {
           packageJsonPath = "${folder}/package.json";
         };

@@ -49,12 +49,18 @@ jobs:
         run: |
           npm i -g npm@12
 
-      # Full npm ci (not --ignore-scripts): electron's postinstall
-      # downloads the binary we launch, and node-pty's native build is
+      # Full npm ci (not --ignore-scripts): node-pty's native build is
       # needed for the terminal pane.
       - uses: ./.github/actions/retry
         with:
           command: npm ci
+
+      # Electron ≥42 dropped its postinstall (lazy binary download), so the
+      # dist/ bundle we launch under xvfb has no binary yet — fetch it
+      # explicitly.
+      - uses: ./.github/actions/retry
+        with:
+          command: node node_modules/electron/install.js
 
       # ── Python (for the hermes serve backend) ──────────────────────────
       - name: Install uv

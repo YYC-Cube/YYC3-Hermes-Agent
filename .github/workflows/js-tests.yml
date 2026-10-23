@@ -45,15 +45,17 @@ jobs:
 
       # The ``cache: npm`` option of ``setup-node`` caches only the ~/.npm
       # tarball cache. The job then extracts the full workspace node_modules
-      # again and runs the postinstalls again, which includes the Electron
-      # binary fetch. This caches the installed tree itself, keyed on the
+      # again and runs the postinstalls again (node-pty's native build, etc.).
+      # This caches the installed tree itself, keyed on the
       # lockfile, and skips ``npm ci`` on an exact hit. There are no
       # restore-keys: a partial hit leaves a stale tree, so anything other
       # than an exact lockfile match reinstalls from the start.
       #
       # This install runs WITH scripts, so the tree holds the postinstall
-      # artifacts. The postinstall of electron unpacks its binary into
-      # node_modules/electron/dist, which is inside the cached tree.
+      # artifacts. Electron ≥42 dropped its postinstall (lazy binary
+      # download), so the step after ``npm ci`` fetches the binary
+      # explicitly; it lands in node_modules/electron/dist, inside the
+      # cached tree.
       #
       # The ~/.cache/electron download cache stays out of the key on purpose.
       # ``npm ci`` is skipped on a hit, so nothing reads that cache. It only
@@ -75,6 +77,14 @@ jobs:
         if: steps.node-modules-cache.outputs.cache-hit != 'true'
         with:
           command: npm ci
+
+      # Electron ≥42 lazy-downloads its binary on first ``electron`` run.
+      # Fetch it now so the cached tree carries node_modules/electron/dist
+      # and the Electron-driving tests find a binary without a cold download.
+      - uses: ./.github/actions/retry
+        if: steps.node-modules-cache.outputs.cache-hit != 'true'
+        with:
+          command: node node_modules/electron/install.js
 
       # Every check runs at the same time. The step fails only after all of
       # them finish. There are two reasons this is not ``npm run --ws check``.
