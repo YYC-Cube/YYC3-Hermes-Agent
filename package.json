@@ -67,7 +67,7 @@
     "follow-redirects": "1.16.1",
     "browserslist": "4.28.7",
     "source-map-js": "1.2.2",
-    "sanitize-html": "2.18.0",
+    "sanitize-html": "2.18.1",
     "colord": "2.9.4",
     "@vitest/mocker": "4.1.12"
   },
