@@ -11,10 +11,20 @@
 # user via `s6-setuidgid`.
 #
 # Security notes:
-#   - The dashboard service binds to 127.0.0.1 by default. It stores API
-#     keys; exposing it on LAN without auth is unsafe. If you want remote
-#     access, use an SSH tunnel or put it behind a reverse proxy that
-#     adds authentication — do NOT pass --insecure --host 0.0.0.0.
+#   - Both services run on a BRIDGE network (container namespace isolated from
+#     the host). Inbound surfaces are published explicitly via `ports:` below;
+#     everything else stays unreachable from outside the container. To reach a
+#     service running on the HOST itself (e.g. Ollama on 127.0.0.1:11434), use
+#     http://host.docker.internal:<port> — NOT 127.0.0.1, which inside the
+#     container points at the container. If you depend on host networking
+#     (LAN-facing integrations, hardcoded localhost URLs), restore
+#     `network_mode: host` on the service and remove its ports/extra_hosts.
+#   - The dashboard publishes ONLY to 127.0.0.1 on the host (it must bind
+#     0.0.0.0 inside the container for the port map to reach it — the
+#     publish-side IP is what keeps it localhost-only). It stores API keys;
+#     exposing it on LAN without auth is unsafe. For remote access, use an
+#     SSH tunnel or a reverse proxy that adds authentication — do NOT pass
+#     --insecure --host 0.0.0.0 with a broad publish address.
 #   - If you override entrypoint, keep `/init` as the first command in
 #     the chain (or let docker use the image's default ENTRYPOINT,
 #     which is `["/init", "/opt/hermes/docker/main-wrapper.sh"]`).
@@ -32,7 +42,14 @@ services:
     image: hermes-agent
     container_name: hermes
     restart: unless-stopped
-    network_mode: host
+    extra_hosts:
+      # Lets the container reach host-side services (local model servers etc.)
+      # as host.docker.internal — 127.0.0.1 inside the container is the container.
+      - "host.docker.internal:host-gateway"
+    # Publish inbound surfaces explicitly; nothing else is reachable. Platform
+    # webhook ports go here (uncomment together with their env above), e.g.:
+    # ports:
+    #   - "127.0.0.1:3978:3978"   # Teams webhook (TEAMS_PORT)
     volumes:
       - ~/.hermes:/opt/data
     environment:
@@ -64,13 +81,17 @@ services:
     image: hermes-agent
     container_name: hermes-dashboard
     restart: unless-stopped
-    network_mode: host
     depends_on:
       - gateway
+    ports:
+      # Localhost-only (publish-side IP enforces it). For remote access,
+      # tunnel via `ssh -L 9119:localhost:9119`.
+      - "127.0.0.1:9119:9119"
     volumes:
       - ~/.hermes:/opt/data
     environment:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
-    # Localhost-only. For remote access, tunnel via `ssh -L 9119:localhost:9119`.
-    command: ["dashboard", "--host", "127.0.0.1", "--no-open"]
+    # Bind 0.0.0.0 INSIDE the container (required for the port map to reach
+    # it); the 127.0.0.1 publish above keeps it host-localhost-only.
+    command: ["dashboard", "--host", "0.0.0.0", "--no-open"]
