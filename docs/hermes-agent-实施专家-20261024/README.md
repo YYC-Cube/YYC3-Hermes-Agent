@@ -74,8 +74,8 @@ curl -sS -I https://h-agent.yyc3.vip/ | grep -Ei \
 
 ## 下次优先 TOP 3（详见 [05-下一阶段衔接与演进规划.md](./05-下一阶段衔接与演进规划.md)）
 
-1. **M4 · P0-5 收口**：用户在「全区 NS 迁移（灰云默认）/ 子域级 CNAME 接入 CDN / meta 兜底接受 2/5」中决策并操作 → `scripts/p05-cloudflare-configure.sh --apply` → `curl -I` 验收。
-2. **M6 · 测试归零**：18 并发隔离 + 9 macOS marker + 4 可选依赖 importorskip + 6 triage；Compose 改 bridge。
+1. **M4 · P0-5 收口（路径已定：方案 B）**：按 [04 手册第八节](./04-P0-5线上安全头执行手册.md) 开通阿里云 DCDN → 添加 `h-agent.yyc3.vip`（源站 `yyc-cube.github.io`，仅海外）→ 免费证书 + 5 类自定义响应头 → CNAME 切换（回滚点）→ AI 执行 curl 验收。
+2. **M6 · 测试归零**：18 并发隔离 + 9 macOS marker + 4 可选依赖 importorskip + 6 triage；Compose bridge 已完成（切片 1）。
 3. **M7→M8**：上游 0.22 评估（`06-` 报告）→ P2 演进自动化（preflight、上游周同步、漂移告警）。
 
 > M5 已完成（2026-10-24）：双 SBOM、ty 新增诊断阻塞、doctor OSV 依赖漏洞检查（24h 缓存）、npm 审计双侧归零（zod 4.6.7 / body-parser 1.20.9）。
