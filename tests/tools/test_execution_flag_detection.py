@@ -32,24 +32,8 @@ def test_real_read_tool_binaries_confirm_option_ownership(
     assert completed.stdout == expected_output
 
 
-@pytest.mark.parametrize(
-    ("tool", "args", "stdin", "needs_tty"),
-    [
-        ("rg", ["--pre", "-payload-marker", "needle", "{input}"], None, False),
-        ("rg", ["--hostname-bin=-payload-marker", "needle", "{input}"], None, False),
-        ("sort", ["--buffer-size=1K", "--compress-program", "-payload-marker"], "{bulk}", False),
-        ("ag", ["--pager=-payload-marker", "needle", "{input}"], None, True),
-        ("man", ["--pager", "-payload-marker", "ls"], None, True),
-        ("man", ["-P", "-payload-marker", "ls"], None, True),
-    ],
-)
-def test_real_binaries_execute_leading_dash_program_payload(
-    tmp_path, tool, args, stdin, needs_tty
-):
-    """A PATH marker proves these binaries do not reparse '-program' as an option."""
-    if shutil.which(tool) is None or (needs_tty and shutil.which("script") is None):
-        pytest.skip(f"{tool} or script is not installed")
-
+def _real_binary_executes_payload(tmp_path, tool, args, stdin, needs_tty):
+    """Shared body for the real-binary payload rows."""
     marker = tmp_path / "executed"
     payload = tmp_path / "-payload-marker"
     payload.write_text("#!/bin/sh\nprintf executed > \"$MARKER\"\ncat\n")
@@ -75,6 +59,54 @@ def test_real_binaries_execute_leading_dash_program_payload(
     subprocess.run(argv, input=input_text, text=True, capture_output=True, env=env, timeout=20)
 
     assert marker.read_text() == "executed"
+
+
+@pytest.mark.parametrize(
+    ("tool", "args", "stdin", "needs_tty"),
+    [
+        ("rg", ["--pre", "-payload-marker", "needle", "{input}"], None, False),
+        ("rg", ["--hostname-bin=-payload-marker", "needle", "{input}"], None, False),
+    ],
+)
+def test_real_binaries_execute_leading_dash_program_payload(
+    tmp_path, tool, args, stdin, needs_tty
+):
+    """A PATH marker proves these binaries do not reparse '-program' as an option.
+
+    Only host-portable rows live here: rg speaks the same grammar everywhere.
+    The GNU-tool rows (sort --compress-program, man --pager, and every
+    needs_tty row — the harness uses GNU util-linux's ``script -qec``, which
+    BSD script on macOS rejects) are pinned by the linux_only sibling below.
+    """
+    if shutil.which(tool) is None or (needs_tty and shutil.which("script") is None):
+        pytest.skip(f"{tool} or script is not installed")
+    _real_binary_executes_payload(tmp_path, tool, args, stdin, needs_tty)
+
+
+@pytest.mark.linux_only
+@pytest.mark.parametrize(
+    ("tool", "args", "stdin", "needs_tty"),
+    [
+        # GNU sort's --compress-program; BSD sort (macOS) rejects the option.
+        ("sort", ["--buffer-size=1K", "--compress-program", "-payload-marker"], "{bulk}", False),
+        # BSD man (macOS) has neither --pager nor GNU script's -qec harness.
+        ("ag", ["--pager=-payload-marker", "needle", "{input}"], None, True),
+        ("man", ["--pager", "-payload-marker", "ls"], None, True),
+        ("man", ["-P", "-payload-marker", "ls"], None, True),
+    ],
+)
+def test_real_gnu_binaries_execute_leading_dash_program_payload(
+    tmp_path, tool, args, stdin, needs_tty
+):
+    """GNU-grammar rows of the payload proof, run where the GNU tools ship.
+
+    These pin the exact CLI grammar the approval detector models; on a BSD
+    host the tools differ (no --compress-program/--pager, script without
+    -c), so the rows belong on the Linux lane (AGENTS.md: don't fake the
+    host OS)."""
+    if shutil.which(tool) is None or (needs_tty and shutil.which("script") is None):
+        pytest.skip(f"{tool} or script is not installed")
+    _real_binary_executes_payload(tmp_path, tool, args, stdin, needs_tty)
 
 
 @pytest.mark.parametrize(

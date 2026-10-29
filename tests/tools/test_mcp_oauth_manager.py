@@ -238,10 +238,19 @@ from unittest.mock import MagicMock
 
 
 def _fake_response(status, url, body):
-    """A minimal stand-in for the httpx.Response the SDK feeds our bridge."""
+    """A minimal stand-in for the httpx2.Response the SDK feeds our bridge.
+
+    Mirrors the real httpx2.Response contract the SDK relies on since mcp
+    2.2.0: ``OAuthClientProvider.async_auth_flow`` runs every incoming
+    response through ``next_request_within_origin()``, which reads
+    ``response.next_request`` — None for a non-redirect (a MagicMock
+    auto-attribute is truthy and sends the SDK down the redirect path,
+    where it then expects ``response.request`` to carry .method/.url).
+    """
     resp = MagicMock()
     resp.status_code = status
     resp.request = SimpleNamespace(url=url)
+    resp.next_request = None
 
     async def _aread():
         return body

@@ -404,11 +404,13 @@ class TestKernelOwnershipAndLifecycle(unittest.TestCase):
                 t.join()
         self.assertEqual([r["status"] for r in results], ["success"] * 6)
         self.assertEqual(len(_KERNELS), 1)
+        # BSD pgrep (macOS) has no -c count flag (procps-ng only), so list the
+        # matching PIDs and count them — same semantics on both platforms.
         live = subprocess.run(
-            ["pgrep", "-fc", "-P", str(os.getpid()), "hermes_kernel_runner"],
+            ["pgrep", "-f", "-P", str(os.getpid()), "hermes_kernel_runner"],
             capture_output=True, text=True,
-        ).stdout.strip()
-        self.assertEqual(live, "1")
+        ).stdout.split()
+        self.assertEqual(len(live), 1)
 
 
 class TestPerCellRpcAuthority(unittest.TestCase):
