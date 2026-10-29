@@ -46,9 +46,17 @@ def _isolate(tmp_path, monkeypatch):
         _interrupted_threads.clear()
 
 
-def _wait_for_sentinel(sentinel, timeout=10.0):
+def _wait_for_sentinel(sentinel, timeout=60.0):
     """Block until the running command created its sentinel (proving the
-    clean-slate clear already ran and the command is in its poll loop)."""
+    clean-slate clear already ran and the command is in its poll loop).
+
+    The sentinel file written by the real child IS the event; the timeout only
+    bounds a genuinely wedged pipeline, so it is generous on purpose: under a
+    loaded runner the whole terminal_tool cold chain (env acquisition, pre-exec
+    guard git probes, bash spawn) measured ~3.8s at p100 with 32-way
+    concurrency, and a full-suite run is strictly heavier — the old 10s bound
+    was within flake range ("command did not start").
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if sentinel.exists():
@@ -79,8 +87,10 @@ def test_non_approved_command_still_interrupts_on_stale_bit(monkeypatch):
     interrupt behavior: a pre-existing bit still kills it (DO-NOT-BREAK)."""
     monkeypatch.setattr(tt, "_check_all_guards", lambda *a, **k: {"approved": True})
     set_interrupt(True)
-
-    result = json.loads(tt.terminal_tool(command="sleep 0.5; echo DONE"))
+    # The kill lands on the wait loop's FIRST poll (~ms), so the passing path
+    # pays nothing for the long sleep; 5s only guarantees a starved first poll
+    # under a loaded runner can't lose the race to a natural exit 0.
+    result = json.loads(tt.terminal_tool(command="sleep 5; echo DONE"))
 
     assert result["exit_code"] == 130, result
     assert "[Command interrupted]" in result["output"]
@@ -94,16 +104,26 @@ def test_approved_command_genuine_interrupt_after_start_still_kills(tmp_path):
 
     def worker():
         holder["result"] = tt.terminal_tool(
-            command=f"touch {sentinel}; sleep 5; echo DONE", force=True
+            # sleep 30 gives the interrupt a wide, load-proof window to be set
+            # and observed before the command could ever exit naturally (exit 0
+            # would defeat the 130 assertion); the passing path pays nothing
+            # because the poll loop SIGINTs at the first iteration (~ms).
+            command=f"touch {sentinel}; sleep 30; echo DONE", force=True
         )
 
     t = threading.Thread(target=worker, daemon=True)
     t.start()
     # Barrier: the command is genuinely running (so the clear already ran) before
-    # we fire the interrupt -- no fixed-sleep timing guess.
-    assert _wait_for_sentinel(sentinel), "command did not start"
+    # we fire the interrupt -- no fixed-sleep timing guess. The generous bound is
+    # cold-chain slack only (see _wait_for_sentinel); a worker that already
+    # returned without creating the sentinel means terminal_tool refused or
+    # degraded early, so surface its result in the failure.
+    assert _wait_for_sentinel(sentinel), (
+        f"command did not start (sentinel {sentinel} never appeared); "
+        f"worker result: {holder.get('result')!r}"
+    )
     set_interrupt(True, thread_id=t.ident)  # genuine interrupt, AFTER start
-    t.join(timeout=15)
+    t.join(timeout=45)
     assert not t.is_alive(), "worker did not exit after a genuine interrupt"
 
     result = json.loads(holder["result"])
@@ -125,13 +145,18 @@ def test_approved_note_enriched_not_misleading_on_interrupt(monkeypatch, tmp_pat
     holder = {}
 
     def worker():
-        holder["result"] = tt.terminal_tool(command=f"touch {sentinel}; sleep 5; echo DONE")
+        # Same load-proof window as the sibling test above: the interrupt must
+        # be observed long before the command could exit on its own.
+        holder["result"] = tt.terminal_tool(command=f"touch {sentinel}; sleep 30; echo DONE")
 
     t = threading.Thread(target=worker, daemon=True)
     t.start()
-    assert _wait_for_sentinel(sentinel), "command did not start"
+    assert _wait_for_sentinel(sentinel), (
+        f"command did not start (sentinel {sentinel} never appeared); "
+        f"worker result: {holder.get('result')!r}"
+    )
     set_interrupt(True, thread_id=t.ident)
-    t.join(timeout=15)
+    t.join(timeout=45)
     assert not t.is_alive()
 
     result = json.loads(holder["result"])
@@ -225,12 +250,14 @@ def test_execute_code_non_approved_still_interrupts_on_stale_bit(monkeypatch):
     )
     set_interrupt(True)
 
+    # Killed on the first poll before the script can print: the wait loop polls
+    # is_interrupted() every ~50ms, so 5s of in-script sleep only widens the
+    # window against scheduler starvation under a loaded runner (the passing
+    # path is killed at the first poll and never sleeps it out).
     result = json.loads(execute_code(
-        code='import time; time.sleep(0.5); print("CODE_DONE")',
+        code='import time; time.sleep(5); print("CODE_DONE")',
         task_id="test-clean-slate-2",
     ))
-
-    # Killed on the first poll before the script can print.
     assert "CODE_DONE" not in result["output"], result
     assert result["status"] == "interrupted", result
     assert result["output"] == "[execution interrupted]"
