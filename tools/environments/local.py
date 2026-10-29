@@ -767,8 +767,17 @@ def _kill_process_group_posix(proc) -> None:
     try:
         pgid = os.getpgid(proc.pid)
     except ProcessLookupError:
-        if (pgid := getattr(proc, "_hermes_pgid", None)) is None:
-            raise
+        # The process died between the caller's ``poll() is None`` check and
+        # this getpgid — a race that only fires under load (32-way parallel
+        # test runs turned it into 18 search failures: the leaked errno
+        # surfaced as ``{"error": "[Errno 3] No such process"}`` from
+        # search_tool). A gone process has nothing left to terminate, and the
+        # only caller without a cached pgid is the inline rg Popen in
+        # file_operations_search._run_rg_native, so treat it as an
+        # already-completed cleanup instead of raising.
+        pgid = getattr(proc, "_hermes_pgid", None)
+        if pgid is None:
+            return
     try:  # psutil children snapshot; empty on any failure (must never break the kill)
         import psutil
         descendants = psutil.Process(proc.pid).children(recursive=True)
