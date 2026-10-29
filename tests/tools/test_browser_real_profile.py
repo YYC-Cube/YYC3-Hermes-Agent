@@ -1006,9 +1006,19 @@ class TestReviewRound3:
         import tools.browser_tool as bt
         bt._real_profile_cdp_cache.clear()
         proc = Mock(returncode=0, stdout="", stderr="")
+
+        class FakeChrome:
+            def poll(self):
+                return None
+
+        def fake_popen(argv, **kw):
+            (tmp_path / "DevToolsActivePort").write_text("9251\n/devtools/browser/x\n")
+            return FakeChrome()
+
         with patch.object(bt_cloud, "_use_real_profile", return_value=True), \
              patch.object(bt_lightpanda_fallback, "_using_lightpanda_engine", return_value=False), \
              patch("hermes_cli.browser_connect.detect_default_chromium", return_value="chrome"), \
+             patch("hermes_cli.browser_connect.chromium_executable", return_value="/usr/bin/chrome"), \
              patch("hermes_cli.browser_connect.real_profile_copy_dir", return_value=str(tmp_path)), \
              patch("hermes_cli.browser_connect.snapshot_real_profile",
                    return_value=(str(tmp_path), None)) as snap, \
@@ -1016,8 +1026,13 @@ class TestReviewRound3:
                           side_effect=[None, "http://127.0.0.1:9251"]), \
              patch.object(bt_install, "_find_agent_browser", return_value="/usr/bin/agent-browser"), \
              patch.object(bt.subprocess, "run", return_value=proc), \
-             patch.object(bt_cloud, "_is_headed_mode", return_value=False):
+             patch.object(bt_cloud, "_is_headed_mode", return_value=False), \
+             patch.object(bt.subprocess, "Popen", side_effect=fake_popen):
             cdp, err = bt_real_profile._real_profile_cdp()
+        # The chromium_executable/Popen mocks mirror the sibling launch tests: upstream
+        # added a fail-closed binary-existence check before relaunch and the launch itself
+        # spawns the REAL binary, so without them this test would depend on a real Chrome
+        # install on the host.
         assert err is None
         snap.assert_called_once()
         bt._real_profile_cdp_cache.clear()

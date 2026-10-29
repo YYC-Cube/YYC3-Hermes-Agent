@@ -165,11 +165,15 @@ def test_run_stdio_malware_check_does_not_block_event_loop():
 def test_run_stdio_malware_check_times_out_fail_open():
     """A check that hangs past the timeout must NOT freeze startup: it times
     out, logs, and proceeds (fail-open) so the server still starts."""
+    import threading
     import time
     mock_stdio_cm, mock_session_cm = _stdio_mocks()
 
+    check_finished = threading.Event()
+
     def hung_check(_command, _args):
-        time.sleep(0.5)  # outlasts the 0.2s timeout 2.5x; short enough not to stall teardown
+        time.sleep(3.0)  # far outlasts the 0.2s timeout; bounds the leaked executor thread's join stall
+        check_finished.set()
         return "MALWARE"  # would block startup if awaited to completion
 
     async def _test():
@@ -179,11 +183,15 @@ def test_run_stdio_malware_check_times_out_fail_open():
              patch("tools.mcp_tool.stdio_client", return_value=mock_stdio_cm), \
              patch("tools.mcp_tool.ClientSession", return_value=mock_session_cm):
             server = MCPServerTask("srv")
-            start = time.monotonic()
             await server.start({"command": "npx", "args": ["-y", "pkg"]})
-            elapsed = time.monotonic() - start
+            # Capture BEFORE shutdown. Event-based proof of fail-open (repo timing-test
+            # policy: no sub-2s wall-clock bounds — the old `elapsed < 1.0` flaked at
+            # 1.0–1.5s on a loaded runner): the flag can only fire ≥3.0s after the check
+            # thread starts, while the 0.2s timeout returns startup long before, so a
+            # set flag here means startup awaited the hung check instead of failing open.
+            fail_open = not check_finished.is_set()
             await server.shutdown()
-        # Returned shortly after the 0.2s timeout (fail-open), not the 0.5s hang.
-        assert elapsed < 1.0, f"startup did not fail-open promptly ({elapsed:.1f}s)"
+        assert fail_open, (
+            "startup waited for the hung malware check instead of failing open at the timeout")
 
     asyncio.run(_test())
