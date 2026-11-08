@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- YYC3 Hermes Agent 本机周维护调度（每周一 09:07，早于 hermes cron 10 分钟）
+     安装: cp scripts/com.yyc3.hermes-maintenance.plist ~/Library/LaunchAgents/
+           launchctl load ~/Library/LaunchAgents/com.yyc3.hermes-maintenance.plist
+     手动触发: launchctl start com.yyc3.hermes-maintenance
+     日志: ~/Library/Logs/yyc3-maintenance.log -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.yyc3.hermes-maintenance</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/yanyu/YYC-Cube/personal/YYC3-Hermes-Agent/scripts/yyc3-maintenance.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>1</integer>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>7</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/yanyu/Library/Logs/yyc3-maintenance.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/yanyu/Library/Logs/yyc3-maintenance.log</string>
+</dict>
+</plist>
