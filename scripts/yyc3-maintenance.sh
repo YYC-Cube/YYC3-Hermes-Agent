@@ -14,13 +14,16 @@ set -uo pipefail
 # Scheduler environments (launchd/cron/non-login shells) start with a minimal
 # PATH where python3 is the system 3.9 and uv/go/node/lego are unreachable —
 # that bricks preflight step 1 and the cert tooling (caught by the first
-# launchd kickstart, 2026-11-10). Normalize before anything runs; missing
-# dirs are harmless for whoever's PATH already covers them.
-for _d in /opt/miniconda3/bin /opt/homebrew/bin /opt/homebrew/opt/node@22/bin \
-          "$HOME/.local/bin" "$HOME/.go/bin"; do
-  [ -d "$_d" ] && PATH="$_d:$PATH"
-done
-export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+# launchd kickstart, 2026-11-10). Tool dirs go AHEAD of the system dirs so
+# /usr/bin/python3 (3.9) cannot shadow the 3.11 interpreter.
+export PATH="/opt/miniconda3/bin:/opt/homebrew/bin:/opt/homebrew/opt/node@22/bin:$HOME/.local/bin:$HOME/.go/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+# Git network steps (upstream weekly fetch) must fail FAST under a scheduler:
+# a stalled HTTPS connect otherwise hangs the run forever (launchd kickstart
+# #1 stuck 30+ min there). Abort transfers below 1KB/s for 30s; BatchMode
+# makes any SSH path fail instead of prompting for a passphrase with no TTY.
+export GIT_HTTP_LOW_SPEED_LIMIT=1024
+export GIT_HTTP_LOW_SPEED_TIME=30
+export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15"
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SESSION="$REPO/docs/hermes-agent-实施专家-20261024"
