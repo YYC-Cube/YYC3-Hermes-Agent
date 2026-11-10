@@ -444,3 +444,7 @@ Long-form background lives in `website/docs/developer-guide/` (agent-loop, promp
 context-compression-and-caching, gateway-internals, tools-runtime, plugins/, cron-internals,
 session-storage, ...). Workflow rules (PR/issue/review/salvage process) live in the
 `hermes-agent-dev` skill, not here.
+
+## 团队标准规范（SSOT 强制参照）
+
+开发与文档产出必须参照 `~/YYC-Cube/YYC3-团队通用-标准规范/`（单一事实源 v2.0.0，总索引见其 README.md）：开发标准/文档闭环/验收提示词/多端适配/设计规范等均以此为准；本仓不自备规范副本，开源文档保留文化设计三要素（family.png 顶图/家族徽章/四行署名尾）。模板：`~/YYC-Cube/docs-kit/`。
