@@ -11,6 +11,17 @@
 # 调度建议: scripts/com.yyc3.hermes-maintenance.plist (launchd 每周一 09:07)。
 set -uo pipefail
 
+# Scheduler environments (launchd/cron/non-login shells) start with a minimal
+# PATH where python3 is the system 3.9 and uv/go/node/lego are unreachable —
+# that bricks preflight step 1 and the cert tooling (caught by the first
+# launchd kickstart, 2026-11-10). Normalize before anything runs; missing
+# dirs are harmless for whoever's PATH already covers them.
+for _d in /opt/miniconda3/bin /opt/homebrew/bin /opt/homebrew/opt/node@22/bin \
+          "$HOME/.local/bin" "$HOME/.go/bin"; do
+  [ -d "$_d" ] && PATH="$_d:$PATH"
+done
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SESSION="$REPO/docs/hermes-agent-实施专家-20261024"
 DOMAIN="h-agent.yyc3.vip"
