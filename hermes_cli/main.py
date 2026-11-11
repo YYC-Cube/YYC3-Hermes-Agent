@@ -2935,7 +2935,10 @@ def _prepare_agent_startup(args) -> None:
         from agent.shell_hooks import register_from_config
 
         _hooks_cfg = load_config()
-        register_from_config(_hooks_cfg, accept_hooks=_accept_hooks)
+        register_from_config(
+            _hooks_cfg, accept_hooks=_accept_hooks,
+            interactive=args.command in {None, "chat", "rl"},
+        )
 
         from agent.outbound_webhooks import (
             register_from_config as register_outbound_webhooks,

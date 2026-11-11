@@ -138,9 +138,16 @@ class ShellHookSpec(_ToolMatcherMixin):
 
 # --- Public API ---
 
-def register_from_config(cfg: Optional[Dict[str, Any]], *, accept_hooks: bool = False) -> List[ShellHookSpec]:
+def register_from_config(cfg: Optional[Dict[str, Any]], *, accept_hooks: bool = False,
+                         interactive: bool = False) -> List[ShellHookSpec]:
     """Register every configured shell hook (idempotent); returns the newly wired specs. Skipped
-    entries (unknown, malformed, not allowlisted, already registered) are logged only."""
+    entries (unknown, malformed, not allowlisted, already registered) are logged only.
+
+    ``interactive=True`` lets a not-yet-allowlisted hook ask at the terminal; only a foreground CLI
+    command passes it. Every other caller (gateway startup and profile loads, cron and managed
+    workers, tui_gateway, force-reload re-registration) never prompts: ``isatty()`` cannot tell a
+    hidden console or ``NUL`` from a person, and a prompt there blocks the event loop until the
+    liveness watchdog kills the gateway."""
     if not isinstance(cfg, dict):
         return []
     from utils import env_var_enabled
@@ -160,10 +167,11 @@ def register_from_config(cfg: Optional[Dict[str, Any]], *, accept_hooks: bool = 
             if key in _registered:
                 continue
             already_allowlisted = _is_allowlisted(spec.event, spec.command)
-        if not already_allowlisted and not _prompt_and_record(spec.event, spec.command, accept_hooks=effective_accept):
-            logger.warning("shell hook for %s (%s) not allowlisted — skipped. Use --accept-hooks / "
-                           "HERMES_ACCEPT_HOOKS=1 / hooks_auto_accept: true, or approve at the TTY prompt next run.",
-                           spec.event, spec.command)
+        if not already_allowlisted and not _prompt_and_record(spec.event, spec.command,
+                                                              accept_hooks=effective_accept, prompt=interactive):
+            logger.warning("shell hook for %s (%s) not allowlisted in %s — skipped. Use --accept-hooks / "
+                           "HERMES_ACCEPT_HOOKS=1 / hooks_auto_accept: true, or approve it at a CLI prompt "
+                           "for this profile.", spec.event, spec.command, allowlist_path())
             continue
         with _registered_lock:
             if key in _registered:
@@ -174,6 +182,19 @@ def register_from_config(cfg: Optional[Dict[str, Any]], *, accept_hooks: bool = 
             logger.info("shell hook registered: %s -> %s (matcher=%s, timeout=%ds, fail_closed=%s)",
                         spec.event, spec.command, spec.matcher, spec.timeout, spec.fail_closed)
     return registered
+
+
+def sync_from_config(load_cfg: "Callable[[], Dict[str, Any]]") -> None:
+    """Re-register this home's shell hooks from a config loader, without prompting (gateway watcher
+    path). Idempotent: already-registered specs are skipped, not-yet-allowlisted ones stay skipped
+    (no TTY in a watcher tick). Called when the allowlist or config.yaml changed since the last
+    consent signature, so consent recorded after startup takes effect without a restart."""
+    try:
+        cfg = load_cfg()
+    except Exception:
+        logger.warning("shell-hook config load failed during re-sync; skipping", exc_info=True)
+        return
+    register_from_config(cfg, interactive=False)
 
 
 def iter_configured_hooks(cfg: Optional[Dict[str, Any]]) -> List[ShellHookSpec]:
@@ -501,13 +522,17 @@ def _flock_unlock(lock_fh: Any) -> None:
         fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)
 
 
-def _prompt_and_record(event: str, command: str, *, accept_hooks: bool) -> bool:
-    """Approve an unseen ``(event, command)`` pair; True iff granted and recorded."""
+def _prompt_and_record(event: str, command: str, *, accept_hooks: bool, prompt: bool = False) -> bool:
+    """Approve an unseen ``(event, command)`` pair; True iff granted and recorded.
+
+    ``prompt`` gates the TTY question: only a foreground CLI command passes it, so a gateway
+    startup on a hidden console never blocks the event loop waiting for input that will never
+    come (liveness watchdog would exit 75 first)."""
     if accept_hooks:
         _record_approval(event, command)
         logger.info("shell hook auto-approved via --accept-hooks / env / config: %s -> %s", event, command)
         return True
-    if not sys.stdin.isatty():
+    if not prompt or not sys.stdin.isatty():
         return False
     print(
         f"\n⚠ Hermes is about to register a shell hook that will run a\n  command on your behalf.\n\n"
