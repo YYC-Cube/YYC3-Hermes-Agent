@@ -45,7 +45,7 @@ class TestTTYPromptFlow:
             mock_stdin.isatty.return_value = True
             registered = shell_hooks.register_from_config(
                 {"hooks": {"on_session_start": [{"command": str(script)}]}},
-                accept_hooks=False,
+                accept_hooks=False, interactive=True,
             )
         assert len(registered) == 1
 
@@ -64,7 +64,7 @@ class TestTTYPromptFlow:
             mock_stdin.isatty.return_value = True
             registered = shell_hooks.register_from_config(
                 {"hooks": {"on_session_start": [{"command": str(script)}]}},
-                accept_hooks=False,
+                accept_hooks=False, interactive=True,
             )
         assert registered == []
         assert shell_hooks.allowlist_entry_for(
@@ -83,7 +83,7 @@ class TestTTYPromptFlow:
             mock_stdin.isatty.return_value = True
             shell_hooks.register_from_config(
                 {"hooks": {"on_session_start": [{"command": str(script)}]}},
-                accept_hooks=False,
+                accept_hooks=False, interactive=True,
             )
 
         # Reset registration set but keep the allowlist on disk.
@@ -96,7 +96,7 @@ class TestTTYPromptFlow:
             mock_stdin.isatty.return_value = True
             registered = shell_hooks.register_from_config(
                 {"hooks": {"on_session_start": [{"command": str(script)}]}},
-                accept_hooks=False,
+                accept_hooks=False, interactive=True,
             )
         assert len(registered) == 1
 
@@ -115,7 +115,7 @@ class TestNonTTYFlow:
             mock_stdin.isatty.return_value = False
             registered = shell_hooks.register_from_config(
                 {"hooks": {"on_session_start": [{"command": str(script)}]}},
-                accept_hooks=False,
+                accept_hooks=False, interactive=True,
             )
         assert registered == []
 
@@ -131,7 +131,7 @@ class TestNonTTYFlow:
             mock_stdin.isatty.return_value = False
             registered = shell_hooks.register_from_config(
                 {"hooks": {"on_session_start": [{"command": str(script)}]}},
-                accept_hooks=False,
+                accept_hooks=False, interactive=True,
             )
         assert len(registered) == 1
 
