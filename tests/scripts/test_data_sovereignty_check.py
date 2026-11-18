@@ -15,6 +15,7 @@ SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "data_sovereignty_che
 
 def _load():
     spec = importlib.util.spec_from_file_location("data_sovereignty_check", SCRIPT)
+    assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
