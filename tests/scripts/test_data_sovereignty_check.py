@@ -3,12 +3,14 @@
 Behaviour contract: a config is compliant iff every model/STT/aux route is either loopback or
 one of the two authorized providers (deepseek, zai) using one of its two authorized models.
 The audit is a pure function over (config, env-name-list) — no disk, no network.
+
+No ``import pytest`` on purpose: the lint lane type-checks this tree without test dependencies
+installed, so a module-level pytest import would register as a new unresolved-import diagnostic.
+Plain ``test_*`` functions run under pytest and keep this file type-check clean.
 """
 
 import importlib.util
 from pathlib import Path
-
-import pytest
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "data_sovereignty_check.py"
 
@@ -35,31 +37,32 @@ AUTHORIZED = {
     "stt": {"enabled": True, "provider": "local"},
 }
 
+CASES = [
+    ("local only", LOCAL, (), True),
+    ("authorized cloud", AUTHORIZED, ("DEEPSEEK_API_KEY", "GLM_API_KEY"), True),
+    ("non-allowlisted provider",
+     {"model": {"default": "gpt-6", "provider": "openai"}, "stt": {"provider": "local"}}, (), False),
+    ("non-allowlisted endpoint",
+     {**LOCAL, "providers": {"relay": {"api": "https://relay.example.com/v1", "models": ["glm-5.2"]}}}, (), False),
+    ("model outside allowlist",
+     {**LOCAL, "providers": {"deepseek": {"models": ["deepseek-v4-pro", "deepseek-r1"]}}}, (), False),
+    ("cloud STT", {**LOCAL, "stt": {"enabled": True, "provider": "openai"}}, (), False),
+    ("inline credential",
+     {**LOCAL, "providers": {"zai": {"api_key": "<inline-placeholder>", "models": ["glm-5.2"]}}}, (), False),
+    ("foreign credential", LOCAL, ("OPENAI_API_KEY",), False),
+    ("aux route to forbidden provider",
+     {**LOCAL, "auxiliary": {"compression": {"provider": "anthropic", "model": "claude-opus-5"}}}, (), False),
+    ("delegation to forbidden provider",
+     {**LOCAL, "delegation": {"provider": "gemini", "model": "gemini-9-pro"}}, (), False),
+]
 
-@pytest.mark.parametrize(
-    ("label", "config", "env", "compliant"),
-    [
-        ("local only", LOCAL, (), True),
-        ("authorized cloud", AUTHORIZED, ("DEEPSEEK_API_KEY", "GLM_API_KEY"), True),
-        ("non-allowlisted provider",
-         {"model": {"default": "gpt-6", "provider": "openai"}, "stt": {"provider": "local"}}, (), False),
-        ("non-allowlisted endpoint",
-         {**LOCAL, "providers": {"relay": {"api": "https://relay.example.com/v1", "models": ["glm-5.2"]}}}, (), False),
-        ("model outside allowlist",
-         {**LOCAL, "providers": {"deepseek": {"models": ["deepseek-v4-pro", "deepseek-r1"]}}}, (), False),
-        ("cloud STT", {**LOCAL, "stt": {"enabled": True, "provider": "openai"}}, (), False),
-        ("inline credential",
-         {**LOCAL, "providers": {"zai": {"api_key": "<inline-placeholder>", "models": ["glm-5.2"]}}}, (), False),
-        ("foreign credential", LOCAL, ("OPENAI_API_KEY",), False),
-        ("aux route to forbidden provider",
-         {**LOCAL, "auxiliary": {"compression": {"provider": "anthropic", "model": "claude-opus-5"}}}, (), False),
-        ("delegation to forbidden provider",
-         {**LOCAL, "delegation": {"provider": "gemini", "model": "gemini-9-pro"}}, (), False),
-    ],
-)
-def test_audit_contract(label, config, env, compliant):
-    violations, _warnings = _load().audit(config, env)
-    assert (not violations) is compliant, f"{label}: {violations}"
+
+def test_audit_contract():
+    """Each row states whether the config may egress; the audit must agree."""
+    audit = _load().audit
+    for label, config, env, compliant in CASES:
+        violations, _warnings = audit(config, env)
+        assert (not violations) is compliant, f"{label}: {violations}"
 
 
 def test_authorized_model_aliases_resolve_to_the_same_policy():
