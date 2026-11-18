@@ -43,7 +43,8 @@ category: index
 | **数据主权** | **ADR-001**：默认本地 Ollama；云 egress 仅 `deepseek-v4-pro`/`deepseek-flash`/`glm-5.3`/`glm-5.3-flash`；`.env` 当前 **0 云密钥**；preflight 第 6 门禁强制 |
 | **页面配置** | `/models` 顶部「云供应商预设」一键写入（无密钥、幂等）；密钥在 `/env`；`memory.dir` 在 `/config`；会话库路径保持 profile 作用域 |
 | **本机 App** | `~/Applications/YYC3 Hermes.app`（`scripts/yyc3-hermes-app.sh` build/install/status/uninstall）；登录自启 `com.yyc3.hermes-app` 已装载，`/health` 200 |
-| 线上站点 | `h-agent.yyc3.vip` → DCDN → Pages；**5/5 安全头**；LE 证书余 77 天（≤35 天自动续期+重传，launchd 周巡检） |
+| 线上站点 | `h-agent.yyc3.vip` → DCDN → Pages；**5/5 安全头**；`/`、`/docs/`、`/zh-Hans/docs/` 均 200；**Pages 失效自愈**（维护脚本自动重发部署）；LE 证书余 69 天（≤35 天自动续期+重传） |
+| 双语 | 四层已实施：HUB 70 键切换 / 文档站 `en·zh-Hans` + 语言下拉（315 文件）/ Dashboard 16 语言 / 桌面端 15 locale |
 | 维护入口 | `bash scripts/yyc3-maintenance.sh`；launchd `com.yyc3.hermes-maintenance`（周一 09:07，kickstart 实测 **7/7 PASS**） |
 | 测试门禁 | preflight **9 关** ALL PASS（含数据主权第 6 关）；OSV critical-high = **0** |
 | 运行时 venv | `~/.hermes/hermes-agent/venv`（canonical；仓库 .venv 不保留） |
