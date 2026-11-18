@@ -28,9 +28,15 @@ export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SESSION="$REPO/docs/hermes-agent-实施专家-20261024"
 DOMAIN="h-agent.yyc3.vip"
+GH_REPO="${GH_REPO:-YYC-Cube/YYC3-Hermes-Agent}"
 LEGO="${LEGO:-$(go env GOPATH 2>/dev/null)/bin/lego}"
 LEGO_PATH="${LEGO_PATH:-$HOME/.lego}"
 CERT="$LEGO_PATH/certificates/${DOMAIN}.crt"
+# The live cert may have been moved into the owner's key-backup tree (observed 2026-11-18:
+# ~/.lego was gone, the cert lived under ~/.yyc3-keybackup/.lego). Fall back only when the
+# canonical path is empty, so a real renewal still writes where lego expects it.
+CERT_BACKUP="$HOME/.yyc3-keybackup/.lego/certificates/${DOMAIN}.crt"
+[ -s "$CERT" ] || [ ! -s "$CERT_BACKUP" ] || CERT="$CERT_BACKUP"
 OUT_DIR="$SESSION/logs"
 OUT="$OUT_DIR/maintenance-$(date +%Y%m%d).md"
 
@@ -61,7 +67,7 @@ if bash "$REPO/scripts/preflight.sh" $PF_FLAG; then ok "preflight: 全部门禁�
 # ── 2) 证书巡检（≤35 天 → lego renew → 重传 DCDN）─────────────
 step "2/5 证书巡检"
 if [ ! -s "$CERT" ]; then
-  bad "证书文件缺失: $CERT（先跑 p05b setup）"
+  bad "证书文件缺失: ${CERT}（先跑 p05b setup）"
 else
   END_EPOCH=$(openssl x509 -enddate -noout -in "$CERT" | cut -d= -f2 | xargs -I{} date -jf "%b %d %H:%M:%S %Y %Z" {} +%s 2>/dev/null)
   if [ -z "${END_EPOCH:-}" ]; then
@@ -87,12 +93,50 @@ fi
 
 # ── 3) 线上验收 ───────────────────────────────────────────────
 step "3/5 线上验收 (${DOMAIN})"
-HCODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://${DOMAIN}/")
-DCODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://${DOMAIN}/docs/")
+
+probe_site() {
+  HCODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://${DOMAIN}/")
+  DCODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://${DOMAIN}/docs/")
+}
+
+probe_site
+# Transient connection blips (000) are common on the DCDN edge; retry briefly before
+# treating a bad probe as a Pages outage, so a flaky minute never triggers a redeploy.
+for _ in 1 2 3; do
+  [ "$HCODE" = "200" ] && break
+  sleep 5
+  probe_site
+done
+# Self-heal: deploy-pages only runs on website/** and pubilc/** changes, so a lost or
+# invalidated Pages publication stays 404 through unrelated merges (seen 2026-11-18:
+# deployment recorded success, origin served 404 for every path). One bounded re-deploy
+# restores it; the probe is re-run rather than trusting the workflow's exit code.
+if [ "$HCODE" != "200" ]; then
+  echo "根页 ${HCODE} — 触发 Pages 重新部署（gh workflow run deploy-pages.yml）"
+  if command -v gh >/dev/null 2>&1 && gh workflow run deploy-pages.yml --repo "${GH_REPO}" --ref main >/dev/null 2>&1; then
+    for _ in $(seq 1 36); do  # 36 × 10s = 6 min
+      sleep 10
+      probe_site
+      [ "$HCODE" = "200" ] && break
+    done
+    [ "$HCODE" = "200" ] && ok "自愈：Pages 重新部署后根页恢复 200" || bad "自愈失败：重新部署后仍为 ${HCODE}"
+  else
+    bad "根页 ${HCODE} 且无法触发 Pages 部署（检查 gh 登录/权限）"
+  fi
+fi
+
 HCNT=$(curl -sI --max-time 20 "https://${DOMAIN}/" | grep -ciE "strict-transport|x-frame|x-content-type|referrer-policy|permissions-policy")
-SHARDS=$(curl -s --max-time 20 "https://${DOMAIN}/api/skills-meta.json" | python3 -c "import json,sys
+fetch_shards() { curl -s --max-time 20 "https://${DOMAIN}/api/skills-meta.json" | python3 -c "import json,sys
 try: print(len(json.load(sys.stdin).get('shards',[])))
-except Exception: print(0)")
+except Exception: print(0)"; }
+SHARDS=$(fetch_shards)
+# A DCDN edge that just filled after a redeploy can serve an empty/partial JSON for a
+# moment; only a sustained miss is a real failure.
+for _ in 1 2 3; do
+  [ "$SHARDS" -ge 3 ] && break
+  sleep 3
+  SHARDS=$(fetch_shards)
+done
 [ "$HCODE" = "200" ] && ok "根页 200" || bad "根页 ${HCODE}"
 [ "$DCODE" = "200" ] && ok "/docs/ 200" || bad "/docs/ ${DCODE}"
 [ "$HCNT" -ge 5 ] && ok "安全头 5/5" || bad "安全头 ${HCNT}/5"
