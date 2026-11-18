@@ -18,6 +18,8 @@
 #        (~8s wall with per-file subprocess isolation). Skipped by --quick.
 #   5. Website key-asset existence: pubilc/YYC3-HERMES-HUB-OFFLINE.html (repo root; "pubilc" is the
 #        intentional on-disk dir name) and website/src/pages/skills/index.tsx.
+#   6. Data sovereignty (ADR-001): local-first default; cloud egress limited to 4 authorized models
+#        (deepseek-v4-pro, deepseek-flash, glm-5.2, glm-4.5-flash). Static config audit — no network.
 #
 # Usage:
 #   scripts/preflight.sh           # full gate
@@ -139,6 +141,21 @@ check_assets() {
   done
   return "$rc"
 }
+check_sovereignty() {
+  # ADR-001 (docs/.../11-数据主权与云API白名单ADR.md): local-first default, cloud egress limited
+  # to deepseek (deepseek-v4-pro, deepseek-flash) + zai (glm-5.2, glm-4.5-flash).
+  # Static config audit only — no network, no content leaves the machine.
+  local out rc=0
+  out="$(python3 "$REPO_ROOT/scripts/data_sovereignty_check.py" 2>&1)" || rc=$?
+  echo "$out" | sed 's/^/  | /'
+  if (( rc == 0 )); then
+    pass "data sovereignty (ADR-001): local-first + 4-model cloud allowlist"
+    return 0
+  else
+    fail "data sovereignty (ADR-001): violations present — fix config.yaml/.env (exit $rc)"
+    return 1
+  fi
+}
 
 # ── run ──────────────────────────────────────────────────────────────────────
 T_START=$SECONDS
@@ -160,6 +177,7 @@ else
   run_step "4. security tests (dashboard auth x4)" check_tests || FAILS=$((FAILS+1))
 fi
 run_step "5. site key assets" check_assets || FAILS=$((FAILS+1))
+run_step "6. data sovereignty (ADR-001)" check_sovereignty || FAILS=$((FAILS+1))
 
 # ── summary ──────────────────────────────────────────────────────────────────
 printf '\n%s\n' "${BOLD}════ PASS/FAIL summary ════${NC}"
