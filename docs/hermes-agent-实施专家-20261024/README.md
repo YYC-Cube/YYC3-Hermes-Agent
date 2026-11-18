@@ -20,7 +20,9 @@ category: index
 
 | 文件 | 内容 | 状态 |
 | --- | --- | --- |
-| **[09-状态压缩与生产就绪终评.md](./09-状态压缩与生产就绪终评.md)** | **压缩事实源：状态 + 不足项 G1-G8 + 生产分析 + 封装流程** | **当前入口** |
+| **[09-状态压缩与生产就绪终评.md](./09-状态压缩与生产就绪终评.md)** | **压缩事实源：状态 + 不足项 G1-G9 + 生产分析 + 封装流程** | **当前入口** |
+| [11-数据主权与云API白名单ADR.md](./11-数据主权与云API白名单ADR.md) | **ADR-001：本地优先 + 云 egress 仅限 DeepSeek×2 / GLM×2，preflight 强制执行** | **accepted** |
+| [10-上游0230安全补丁backport评估报告.md](./10-上游0230安全补丁backport评估报告.md) | 0.23.0 安全补丁 backport 可行性（P0-P5）+ P0-P2 已落地 | v1.0 |
 | [08-上游0231整树切换干跑报告.md](./08-上游0231整树切换干跑报告.md) | 0.23.1 干跑实测（84∩/61 冲突/人工≈13-23）+ 决策维持 (a) + G8 | v1.0 |
 | [00-生产闭环终极审核与演进建议报告.md](./00-生产闭环终极审核与演进建议报告.md) | 初审 + 复核 + P0/P1 执行 + 对标 + 路线（含 v1.6.1 终点记录） | v1.6.1 |
 | [01-任务规划与节点目标.md](./01-任务规划与节点目标.md) | 阶段目标、任务分解、验收标准、里程碑 | 已更新 |
@@ -32,15 +34,17 @@ category: index
 | [07-上游022结构重构评估.md](./07-上游022结构重构评估.md) | 0.22 冲突面实测 + 合并决策（缓议 + 0.23.0 触发干跑） | v1.0 |
 | [logs/](./logs/) | 机器可读执行日志 + `maintenance-*.md` 维护归档 + `dryrun-0231/` 干跑原始清单 | 持续 |
 
-## 当前基线（2026-11-11 巡检）
+## 当前基线（2026-11-18 巡检）
 
 | 项 | 值 |
 | --- | --- |
 | 代码版本 | `0.21.3` 基线 + 定点 backport（上游策略见 08：维持 (a)，下一评估点 **v0.24.0**） |
-| 上游 | `v0.23.1`（2026-11-10；滚装节奏 ~5 天/版，main 领先 2.5k commits/5 天） |
+| 上游 | `v0.23.1`（2026-11-10；滚装节奏 ~5 天/版；不追踪，仅安全公告监视） |
+| **数据主权** | **ADR-001**：默认本地 Ollama；云 egress 仅 `deepseek-v4-pro`/`deepseek-flash`/`glm-5.2`/`glm-4.5-flash`；`.env` 当前 **0 云密钥**；preflight 第 6 门禁强制 |
+| **本机 App** | `~/Applications/YYC3 Hermes.app`（`scripts/yyc3-hermes-app.sh` build/install/status/uninstall）；登录自启 `com.yyc3.hermes-app` 已装载，`/health` 200 |
 | 线上站点 | `h-agent.yyc3.vip` → DCDN → Pages；**5/5 安全头**；LE 证书余 77 天（≤35 天自动续期+重传，launchd 周巡检） |
 | 维护入口 | `bash scripts/yyc3-maintenance.sh`；launchd `com.yyc3.hermes-maintenance`（周一 09:07，kickstart 实测 **7/7 PASS**） |
-| 测试门禁 | preflight 8 关 ALL PASS（11s）；OSV critical-high = **0**（oauthlib 4.0.1 / pyasn1 0.6.5 已于 11-09 修复） |
+| 测试门禁 | preflight **9 关** ALL PASS（含数据主权第 6 关）；OSV critical-high = **0** |
 | 运行时 venv | `~/.hermes/hermes-agent/venv`（canonical；仓库 .venv 不保留） |
 | Python / uv / rg | 3.11.14 / 0.13.5 / 15.2.0 |
 | 自动化变更 | **分支 + PR（禁直推 main）**；PR #22 已 rebase-merge（5 commits） |
