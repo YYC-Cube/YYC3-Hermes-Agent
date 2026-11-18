@@ -236,6 +236,7 @@
       "category": "public.app-category.developer-tools",
       "entitlements": "electron/entitlements.mac.plist",
       "entitlementsInherit": "electron/entitlements.mac.inherit.plist",
+      "artifactName": "YYC3-Hermes-${version}-${arch}.${ext}",
       "extendInfo": {
         "CFBundleDisplayName": "Hermes",
         "CFBundleExecutable": "Hermes",

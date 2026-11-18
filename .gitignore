@@ -159,6 +159,10 @@ config/mcporter.json
 .trae-html-share-packages/
 .v2c/
 .video_agent/
+# Local tool caches / artefacts (not project sources): ruff's analysis cache and
+# screenshot captures from GUI runs. Neither is ever committed.
+.ruff_cache/
+.screenshots/
 
 hermes_cli/tui_dist/*
 hermes_cli/scripts/
