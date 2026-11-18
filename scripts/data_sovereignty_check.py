@@ -92,10 +92,15 @@ def _allowed_for(provider: str) -> dict[str, Any] | None:
     return CLOUD_ALLOWLIST.get(_canon_provider(provider))
 
 
+def _mapping(value: Any) -> Mapping[str, Any]:
+    """*value* as a mapping, or an empty one (keeps type narrowing explicit for the checker)."""
+    return value if isinstance(value, Mapping) else {}
+
+
 def _credential_env_names() -> frozenset[str]:
     """Provider credential env var names, from the registry when importable."""
     try:  # repo checkout on sys.path (preflight runs from the repo root)
-        from providers import list_providers  # type: ignore
+        from providers import list_providers
 
         names: set[str] = set()
         for profile in list_providers():
@@ -208,7 +213,7 @@ def _check_auxiliary(aux: Any, violations: list[str], warnings: list[str]) -> No
 
 
 def _check_fallbacks(config: Mapping[str, Any], violations: list[str], warnings: list[str]) -> None:
-    model_cfg = config.get("model") if isinstance(config.get("model"), Mapping) else {}
+    model_cfg = _mapping(config.get("model"))
     candidates = [
         ("model.fallback_providers", model_cfg.get("fallback_providers")),
         ("fallback_providers", config.get("fallback_providers")),
@@ -259,7 +264,7 @@ def audit(config: Mapping[str, Any], env_names: Iterable[str] = ()) -> tuple[lis
     """Return ``(violations, warnings)`` for an in-memory config + secret *names*."""
     violations: list[str] = []
     warnings: list[str] = []
-    model_cfg = config.get("model") if isinstance(config.get("model"), Mapping) else {}
+    model_cfg = _mapping(config.get("model"))
     _check_route(
         "model",
         provider=model_cfg.get("provider"),
