@@ -32,7 +32,7 @@ AUTHORIZED = {
     "model": dict(LOCAL["model"]),
     "providers": {
         "deepseek": {"key_env": "DEEPSEEK_API_KEY", "models": ["deepseek-v4-pro", "deepseek-flash"]},
-        "zai": {"key_env": "GLM_API_KEY", "models": ["glm-5.2", "glm-4.5-flash"]},
+        "zai": {"key_env": "GLM_API_KEY", "models": ["glm-5.3", "glm-5.3-flash"]},
     },
     "stt": {"enabled": True, "provider": "local"},
 }
@@ -43,7 +43,7 @@ CASES = [
     ("non-allowlisted provider",
      {"model": {"default": "gpt-6", "provider": "openai"}, "stt": {"provider": "local"}}, (), False),
     ("non-allowlisted endpoint",
-     {**LOCAL, "providers": {"relay": {"api": "https://relay.example.com/v1", "models": ["glm-5.2"]}}}, (), False),
+     {**LOCAL, "providers": {"relay": {"api": "https://relay.example.com/v1", "models": ["glm-5.3"]}}}, (), False),
     ("model outside allowlist",
      {**LOCAL, "providers": {"deepseek": {"models": ["deepseek-v4-pro", "deepseek-r1"]}}}, (), False),
     ("cloud STT", {**LOCAL, "stt": {"enabled": True, "provider": "openai"}}, (), False),
@@ -69,7 +69,7 @@ def test_authorized_model_aliases_resolve_to_the_same_policy():
     """``glm``/``zhipu``/``z-ai`` all resolve to zai, so an alias cannot bypass the allowlist."""
     audit = _load().audit
     for alias in ("glm", "zhipu", "z-ai", "z.ai"):
-        violations, _ = audit({**LOCAL, "model": {"provider": alias, "default": "glm-5.2"}}, ())
+        violations, _ = audit({**LOCAL, "model": {"provider": alias, "default": "glm-5.3"}}, ())
         assert not violations, f"{alias}: {violations}"
         violations, _ = audit({**LOCAL, "model": {"provider": alias, "default": "glm-9-offlist"}}, ())
         assert violations, f"{alias} must not authorize an off-list model"

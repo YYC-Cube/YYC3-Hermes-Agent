@@ -40,7 +40,8 @@ category: index
 | --- | --- |
 | 代码版本 | `0.21.3` 基线 + 定点 backport（上游策略见 08：维持 (a)，下一评估点 **v0.24.0**） |
 | 上游 | `v0.23.1`（2026-11-10；滚装节奏 ~5 天/版；不追踪，仅安全公告监视） |
-| **数据主权** | **ADR-001**：默认本地 Ollama；云 egress 仅 `deepseek-v4-pro`/`deepseek-flash`/`glm-5.2`/`glm-4.5-flash`；`.env` 当前 **0 云密钥**；preflight 第 6 门禁强制 |
+| **数据主权** | **ADR-001**：默认本地 Ollama；云 egress 仅 `deepseek-v4-pro`/`deepseek-flash`/`glm-5.3`/`glm-5.3-flash`；`.env` 当前 **0 云密钥**；preflight 第 6 门禁强制 |
+| **页面配置** | `/models` 顶部「云供应商预设」一键写入（无密钥、幂等）；密钥在 `/env`；`memory.dir` 在 `/config`；会话库路径保持 profile 作用域 |
 | **本机 App** | `~/Applications/YYC3 Hermes.app`（`scripts/yyc3-hermes-app.sh` build/install/status/uninstall）；登录自启 `com.yyc3.hermes-app` 已装载，`/health` 200 |
 | 线上站点 | `h-agent.yyc3.vip` → DCDN → Pages；**5/5 安全头**；LE 证书余 77 天（≤35 天自动续期+重传，launchd 周巡检） |
 | 维护入口 | `bash scripts/yyc3-maintenance.sh`；launchd `com.yyc3.hermes-maintenance`（周一 09:07，kickstart 实测 **7/7 PASS**） |

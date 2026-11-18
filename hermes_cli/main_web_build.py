@@ -501,6 +501,13 @@ def _do_build_web_ui(web_dir: Path, *, fatal: bool = False) -> bool:
 
     r1 = _install_web_deps(silent=True)
     if r1.returncode != 0:
+        # Same fallback the build-failure path uses below: a scheduler-launched dashboard
+        # (launchd, Windows Task Scheduler) may have no working npm, and refusing to start
+        # because a *rebuild* could not run would take a working UI offline.
+        if (_web_dist_dir(web_dir) / "index.html").exists():
+            _console_print("  ⚠ Web UI npm install failed — serving the existing dist")
+            _relay_npm_output(r1)
+            return True
         return _report_web_build_failure("npm install", r1, fatal=fatal)
     r2 = _build()
     if r2.returncode != 0:

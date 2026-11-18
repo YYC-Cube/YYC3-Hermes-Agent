@@ -36,8 +36,23 @@ _memory_surface_flags: ContextVar[Optional[Tuple[bool, bool]]] = ContextVar("mem
 
 
 def get_memory_dir() -> Path:
-    """Profile-scoped memories dir, resolved per call (HERMES_HOME may switch after import)."""
-    return get_hermes_home() / "memories"
+    """Profile-scoped memories dir, resolved per call (HERMES_HOME may switch after import).
+
+    ``memory.dir`` relocates the built-in MEMORY.md / USER.md store (dashboard Config page).
+    Empty keeps ``<HERMES_HOME>/memories``. A relative value resolves against HERMES_HOME, so a
+    profile-scoped setting cannot escape its own home by accident; ``~`` and absolute paths are
+    honoured as written.
+    """
+    home = get_hermes_home()
+    try:
+        from hermes_cli.config import load_config_readonly
+        configured = (load_config_readonly().get("memory") or {}).get("dir")
+    except Exception:  # config unreadable: fall back to the default store, never fail memory I/O
+        configured = ""
+    if isinstance(configured, str) and configured.strip():
+        candidate = Path(configured.strip()).expanduser()
+        return candidate if candidate.is_absolute() else (home / candidate)
+    return home / "memories"
 
 
 from tools.memory_tool_store import (  # noqa: E402,F401  (re-exports)

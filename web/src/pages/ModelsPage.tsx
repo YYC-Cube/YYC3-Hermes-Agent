@@ -6,8 +6,11 @@ import {
   Cpu,
   DollarSign,
   Eye,
+  KeyRound,
+  Plus,
   RefreshCw,
   Settings2,
+  ShieldCheck,
   Star,
   Wrench,
   X,
@@ -17,6 +20,7 @@ import { api } from "@/lib/api";
 import type {
   AuxiliaryModelsResponse,
   AuxiliaryTaskAssignment,
+  ModelPreset,
   MoaConfigResponse,
   MoaModelSlot,
   ModelsAnalyticsModelEntry,
@@ -928,6 +932,126 @@ function MoaModelsModal({
   );
 }
 
+function ProviderPresetsCard({ onApplied }: { onApplied(): void }) {
+  const [presets, setPresets] = useState<ModelPreset[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    api
+      .getModelPresets()
+      .then((r) => setPresets(r.presets))
+      .catch((e) => setError(errorMessage(e)));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const apply = async (preset: ModelPreset) => {
+    setBusy(preset.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await api.applyModelPreset(preset.id);
+      setNotice(result.next_step);
+      load();
+      onApplied();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Card className="min-w-0 max-w-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex flex-wrap items-center gap-2 text-sm">
+          <ShieldCheck className="h-4 w-4 text-primary" />
+          云供应商预设
+          <Badge tone="secondary" className="text-xs">
+            ADR-001
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs leading-relaxed text-text-tertiary">
+          一键写入{" "}
+          <span className="font-mono">providers.&lt;id&gt;</span>
+          （仅 key_env 与授权模型，不含密钥）。密钥在{" "}
+          <a href="/env" className="underline">
+            环境变量
+          </a>{" "}
+          页填写；随后在模型选择器中使用。
+        </p>
+        {!presets && !error && (
+          <div className="flex items-center gap-2 text-xs text-text-tertiary">
+            <Spinner /> 载入预设…
+          </div>
+        )}
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        {notice && <p className="text-xs text-text-secondary">{notice}</p>}
+        {presets?.map((preset) => (
+          <div key={preset.id} className="space-y-2 rounded-lg border border-border/60 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">{preset.label}</span>
+              {preset.applied ? (
+                <Badge tone="success" className="text-xs">
+                  已应用
+                </Badge>
+              ) : (
+                <Badge tone="secondary" className="text-xs">
+                  未应用
+                </Badge>
+              )}
+              <Badge
+                tone={preset.key_present ? "success" : "outline"}
+                className="text-xs"
+              >
+                <KeyRound className="mr-1 h-3 w-3" />
+                {preset.key_present ? "密钥已配置" : "待配置密钥"}
+              </Badge>
+              <span className="ml-auto flex items-center gap-2">
+                <Button size="sm" ghost onClick={() => window.location.assign("/env")}>
+                  设置密钥
+                </Button>
+                <Button
+                  size="sm"
+                  outlined
+                  disabled={busy === preset.id}
+                  onClick={() => void apply(preset)}
+                >
+                  {busy === preset.id ? (
+                    <Spinner />
+                  ) : (
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  {preset.applied ? "重新应用" : "应用预设"}
+                </Button>
+              </span>
+            </div>
+            <p className="text-xs text-text-tertiary">{preset.description}</p>
+            <p className="font-mono text-xs text-text-tertiary">{preset.base_url}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {preset.models.map((model) => (
+                <Badge key={model.id} tone="outline" className="font-mono text-xs">
+                  {model.id}
+                  <span className="ml-1 text-text-tertiary">
+                    {model.role === "flagship" ? "旗舰" : "快档"} ·{" "}
+                    {compactNumber(model.context_window)}
+                  </span>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ModelSettingsPanel({
   aux,
   refreshKey,
@@ -1243,6 +1367,8 @@ export default function ModelsPage() {
   return (
     <div className="flex min-w-0 max-w-full flex-col gap-6">
       <PluginSlot name="models:top" />
+
+      <ProviderPresetsCard onApplied={onAssigned} />
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-2">
         <ModelSettingsPanel
