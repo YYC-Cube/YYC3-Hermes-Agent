@@ -6,7 +6,7 @@ Extracted from ``hermes_cli.web_server``; helpers/state that tests monkeypatch o
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 
@@ -313,3 +313,116 @@ async def set_model_assignment(body: ModelAssignment, profile: Optional[str] = N
                         reasoning_effort=reasoning_effort, prepared=prepared)
 
         return await asyncio.to_thread(_apply_assignment)
+
+
+# ── Cloud provider presets (ADR-001) ─────────────────────────────────────────────────────────────
+# Two one-click presets matching the authorized cloud pair: DeepSeek and Z.AI/GLM. Applying one
+# writes only the non-secret ``providers.<id>`` block (``key_env`` + authorized ``models``); the
+# credential is set on the environment page, so no secret transits this surface, and the endpoint
+# stays fixed by the bundled provider profile. Keep the model lists in sync with ADR-001 §2 D2.
+PRESETS: Dict[str, Dict[str, Any]] = {
+    "deepseek": {
+        "id": "deepseek",
+        "label": "DeepSeek",
+        "description": "DeepSeek 官方 API — 旗舰 v4-pro + 快档 flash（上下文 1M，flash 支持视觉）",
+        "provider": "deepseek",
+        "base_url": "https://api.deepseek.com/v1",
+        "transport": "chat_completions",
+        "key_env": "DEEPSEEK_API_KEY",
+        "models": [
+            {"id": "deepseek-v4-pro", "role": "flagship", "context_window": 1_000_000,
+             "capabilities": ["text", "structured_output", "system_messages"]},
+            {"id": "deepseek-flash", "role": "fast", "context_window": 1_000_000,
+             "capabilities": ["text", "vision", "structured_output", "system_messages"]},
+        ],
+    },
+    "zai": {
+        "id": "zai",
+        "label": "Z.AI (GLM)",
+        "description": "智谱 Z.AI 官方 API — 旗舰 glm-5.3 + 快档 glm-5.3-flash（上下文 1.31M，flash 支持视觉）",
+        "provider": "zai",
+        "base_url": "https://api.z.ai/api/paas/v4",
+        "transport": "chat_completions",
+        "key_env": "GLM_API_KEY",
+        "models": [
+            {"id": "glm-5.3", "role": "flagship", "context_window": 1_310_720,
+             "capabilities": ["text", "structured_output", "system_messages"]},
+            {"id": "glm-5.3-flash", "role": "fast", "context_window": 1_310_720,
+             "capabilities": ["text", "vision", "structured_output", "system_messages"]},
+        ],
+    },
+}
+
+
+def preset_model_ids(preset: Dict[str, Any]) -> List[str]:
+    """Authorized model ids of a preset, in display order."""
+    return [str(m["id"]) for m in preset.get("models", ())]
+
+
+def provider_block(preset: Dict[str, Any]) -> Dict[str, Any]:
+    """The non-secret ``providers.<id>`` block a preset writes (no api_key, no endpoint)."""
+    return {"key_env": preset["key_env"], "models": preset_model_ids(preset)}
+
+
+def apply_preset(config: Dict[str, Any], preset: Dict[str, Any]) -> Dict[str, Any]:
+    """Return *config* with ``providers.<id>`` carrying the preset block (idempotent).
+
+    Other providers, user extras on this entry (timeouts, extra_body) and every unrelated
+    section are preserved; an entry that already matches comes back unchanged.
+    """
+    providers = config.get("providers")
+    if not isinstance(providers, dict):
+        providers = {}
+    block = provider_block(preset)
+    existing = providers.get(preset["provider"])
+    if isinstance(existing, dict):
+        merged = {**existing, **block}
+        if merged == existing:
+            return config
+        providers = {**providers, preset["provider"]: merged}
+    else:
+        providers = {**providers, preset["provider"]: block}
+    return {**config, "providers": providers}
+
+
+def preset_status(preset: Dict[str, Any], config: Dict[str, Any], env_get) -> Dict[str, Any]:
+    """Catalogue row: preset content + applied state + whether its credential is armed."""
+    providers = config.get("providers") if isinstance(config.get("providers"), dict) else {}
+    entry = providers.get(preset["provider"]) if isinstance(providers, dict) else None
+    applied = isinstance(entry, dict) and list(entry.get("models") or []) == preset_model_ids(preset)
+    try:
+        key_present = bool(env_get(preset["key_env"]))
+    except Exception:
+        key_present = False
+    return {**preset, "applied": applied, "key_present": key_present,
+            "authorized_models": preset_model_ids(preset)}
+
+
+@router.get("/api/model/presets")
+def list_model_presets():
+    """Preset catalogue for the Models page, with applied/key state for this profile."""
+    from hermes_cli.config import get_env_value
+
+    config = load_config()
+    return {"presets": [preset_status(p, config, get_env_value) for p in PRESETS.values()]}
+
+
+@router.post("/api/model/presets/{preset_id}/apply")
+def apply_model_preset(preset_id: str):
+    """Write the preset's provider block into config.yaml (no secrets, idempotent)."""
+    preset = PRESETS.get(preset_id)
+    if preset is None:
+        raise HTTPException(status_code=404, detail=f"unknown preset: {preset_id}")
+    config = load_config()
+    updated = apply_preset(config, preset)
+    changed = updated is not config
+    if changed:
+        save_config(updated, merge_existing=True)
+    return {
+        "preset": preset_id,
+        "provider": preset["provider"],
+        "models": preset_model_ids(preset),
+        "key_env": preset["key_env"],
+        "changed": changed,
+        "next_step": f"在「环境变量」页设置 {preset['key_env']}，然后在 /model 中选择该模型",
+    }

@@ -1,13 +1,19 @@
-"""Provider presets endpoint (ADR-001): authorized pair, non-secret block, idempotent apply."""
+"""Provider presets (ADR-001): authorized pair, non-secret block, idempotent apply.
 
-import pytest
-from fastapi import HTTPException
+No ``import pytest`` / fastapi on purpose: the lint lane type-checks this tree without test or
+runtime dependencies installed, so a module-level third-party import would register as a new
+unresolved-import diagnostic. Plain ``test_*`` functions run under pytest regardless.
+"""
+
+
+def _api():
+    from hermes_cli.web_routers import models
+
+    return models
 
 
 def _catalogue():
-    from hermes_cli.web_routers import model_presets as mp
-
-    return {row["id"]: row for row in mp.list_model_presets()["presets"]}
+    return {row["id"]: row for row in _api().list_model_presets()["presets"]}
 
 
 def test_catalogue_carries_the_adr_001_authorized_pair():
@@ -23,11 +29,10 @@ def test_catalogue_carries_the_adr_001_authorized_pair():
 
 def test_apply_writes_only_the_non_secret_provider_block():
     from hermes_cli.config import load_config, save_config
-    from hermes_cli.web_routers import model_presets as mp
 
     save_config({"model": {"default": "local-model", "provider": "custom",
                            "base_url": "http://127.0.0.1:11434/v1"}})
-    result = mp.apply_model_preset("zai")
+    result = _api().apply_model_preset("zai")
     assert result["models"] == ["glm-5.3", "glm-5.3-flash"]
 
     block = load_config()["providers"]["zai"]
@@ -37,30 +42,28 @@ def test_apply_writes_only_the_non_secret_provider_block():
 
 def test_apply_is_idempotent_and_preserves_user_extras():
     from hermes_cli.config import load_config, save_config
-    from hermes_cli.web_routers import model_presets as mp
 
     save_config({"providers": {"zai": {"extra_body": {"x": 1}},
                                "local": {"api": "http://127.0.0.1:1/v1"}}})
-    assert mp.apply_model_preset("zai")["changed"] is True
-    assert mp.apply_model_preset("zai")["changed"] is False
+    assert _api().apply_model_preset("zai")["changed"] is True
+    assert _api().apply_model_preset("zai")["changed"] is False
 
     providers = load_config()["providers"]
-    assert providers["zai"]["extra_body"] == {"x": 1}          # user extra kept
+    assert providers["zai"]["extra_body"] == {"x": 1}             # user extra kept
     assert providers["zai"]["models"] == ["glm-5.3", "glm-5.3-flash"]
-    assert providers["local"]["api"] == "http://127.0.0.1:1/v1"  # unrelated provider kept
+    assert providers["local"]["api"] == "http://127.0.0.1:1/v1"   # unrelated provider kept
 
 
 def test_applied_flag_tracks_the_allowlist():
-    from hermes_cli.web_routers import model_presets as mp
-
     assert _catalogue()["deepseek"]["applied"] is False
-    mp.apply_model_preset("deepseek")
+    _api().apply_model_preset("deepseek")
     assert _catalogue()["deepseek"]["applied"] is True
 
 
 def test_unknown_preset_is_404():
-    from hermes_cli.web_routers import model_presets as mp
-
-    with pytest.raises(HTTPException) as excinfo:
-        mp.apply_model_preset("openai")
-    assert excinfo.value.status_code == 404
+    try:
+        _api().apply_model_preset("openai")
+    except Exception as exc:  # HTTPException, without importing fastapi in the lint lane
+        assert getattr(exc, "status_code", None) == 404
+    else:
+        raise AssertionError("an unknown preset must raise")
