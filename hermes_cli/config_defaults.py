@@ -1252,6 +1252,10 @@ DEFAULT_CONFIG = {
         # External memory provider plugin (empty = built-in only); only ONE at a time: "openviking",
         # "mem0", "hindsight", "holographic", "retaindb", "byterover".
         "provider": "",
+        # Built-in store location (MEMORY.md / USER.md). Empty = <HERMES_HOME>/memories. A relative
+        # value resolves against HERMES_HOME so a profile setting cannot escape its own home;
+        # ~ and absolute paths are honoured as written. Editable on the dashboard Config page.
+        "dir": "",
     },
     # Subagent delegation — override the provider:model used by delegate_task so children run on a
     # cheaper/faster model. Uses the same runtime provider resolution as CLI/gateway startup, so

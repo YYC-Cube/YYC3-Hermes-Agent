@@ -568,6 +568,12 @@ export const api = {
       appendProfileParam("/api/model/auxiliary", profile),
     ),
   getMoaModels: () => fetchJSON<MoaConfigResponse>("/api/model/moa"),
+  getModelPresets: () => fetchJSON<ModelPresetsResponse>("/api/model/presets"),
+  applyModelPreset: (presetId: string) =>
+    fetchJSON<ApplyModelPresetResponse>(
+      `/api/model/presets/${encodeURIComponent(presetId)}/apply`,
+      { method: "POST" },
+    ),
   saveMoaModels: (body: MoaConfigResponse) =>
     fetchJSON<MoaConfigResponse & { ok: boolean }>("/api/model/moa", {
       method: "PUT",
@@ -2506,6 +2512,43 @@ export interface MoaConfigResponse {
   degraded_reference_policy: "loud" | "silent";
 
   enabled: boolean;
+}
+
+export interface ModelPresetModel {
+  id: string;
+  role: "flagship" | "fast";
+  context_window: number;
+  capabilities: string[];
+}
+
+/** One authorized cloud provider preset (ADR-001) with its applied/key state. */
+export interface ModelPreset {
+  id: string;
+  label: string;
+  description: string;
+  provider: string;
+  base_url: string;
+  transport: string;
+  key_env: string;
+  models: ModelPresetModel[];
+  authorized_models: string[];
+  /** providers.<provider> already carries exactly the authorized model list. */
+  applied: boolean;
+  /** The provider's credential exists in the profile's .env (value never leaves the server). */
+  key_present: boolean;
+}
+
+export interface ModelPresetsResponse {
+  presets: ModelPreset[];
+}
+
+export interface ApplyModelPresetResponse {
+  preset: string;
+  provider: string;
+  models: string[];
+  key_env: string;
+  changed: boolean;
+  next_step: string;
 }
 
 export interface ModelAssignmentRequest {

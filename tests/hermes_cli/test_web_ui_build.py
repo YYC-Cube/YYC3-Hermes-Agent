@@ -12,6 +12,7 @@ freshness check is a no-op and the OOM rebuild always runs.
 """
 
 import os
+import subprocess
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -418,4 +419,27 @@ class TestBuildRecoversFromMissingToolchain:
         assert result is True
         assert mock_install.call_count == 1
         assert mock_build.call_count == 1
+
+
+def test_npm_install_failure_serves_the_existing_dist(tmp_path):
+    """A scheduler-launched dashboard without a working npm must keep an existing UI online.
+
+    launchd / Task Scheduler start with a minimal environment; a *rebuild* that cannot run
+    must not take a working dashboard offline (same fallback the build-failure path uses).
+    """
+    from hermes_cli.main_web_build import _do_build_web_ui
+
+    web_dir, dist_dir = _make_web_dir(tmp_path)
+    dist_dir.mkdir(parents=True)
+    (dist_dir / "index.html").write_text("<html></html>", encoding="utf-8")
+    install_fail = subprocess.CompletedProcess(["npm", "ci"], 1, stdout="", stderr="npm ENOENT")
+
+    with patch("hermes_cli.main_install_repair._resolve_node_runtime_npm", return_value="/usr/bin/npm"), \
+         patch("hermes_cli.main_web_build._run_npm_install_deterministic", return_value=install_fail), \
+         patch("hermes_cli.main_web_build._run_with_idle_timeout") as mock_build, \
+         patch("hermes_cli.main_web_build._web_ui_build_needed", return_value=True):
+        result = _do_build_web_ui(web_dir, fatal=True)
+
+    assert result is True               # startup continues
+    assert mock_build.call_count == 0   # the build step is never reached
 

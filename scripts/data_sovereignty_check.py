@@ -3,7 +3,7 @@
 
 Checks that the *effective configuration* cannot send conversation content to any
 cloud endpoint outside the two authorized providers (DeepSeek, Z.AI/GLM) and the
-four authorized models (deepseek-v4-pro, deepseek-flash, glm-5.2, glm-4.5-flash).
+four authorized models (deepseek-v4-pro, deepseek-flash, glm-5.3, glm-5.3-flash).
 Local-first is the default; any loopback route is always allowed.
 
 Reads: ``$HERMES_HOME/config.yaml`` (or ``--config``) and the secret *names* in
@@ -37,7 +37,7 @@ CLOUD_ALLOWLIST: dict[str, dict[str, Any]] = {
     },
     "zai": {
         "hosts": frozenset({"api.z.ai"}),
-        "models": frozenset({"glm-5.2", "glm-4.5-flash"}),
+        "models": frozenset({"glm-5.3", "glm-5.3-flash"}),
     },
 }
 PROVIDER_ALIASES = {
@@ -327,7 +327,7 @@ def _self_test() -> int:
         "providers": {
             "deepseek": {"key_env": "DEEPSEEK_API_KEY",
                          "models": ["deepseek-v4-pro", "deepseek-flash"]},
-            "zai": {"key_env": "GLM_API_KEY", "models": ["glm-5.2", "glm-4.5-flash"]},
+            "zai": {"key_env": "GLM_API_KEY", "models": ["glm-5.3", "glm-5.3-flash"]},
         },
         "stt": {"enabled": True, "provider": "local"},
     }
@@ -353,7 +353,7 @@ def _self_test() -> int:
         "model": dict(local_default["model"]),
         # Fixture only: the audit must reject an inline credential. Never a real value.
         "providers": {"zai": {"api_key": "<inline-credential-placeholder>",
-                              "models": ["glm-5.2", "glm-4.5-flash"]}},
+                              "models": ["glm-5.3", "glm-5.3-flash"]}},
         "stt": {"enabled": True, "provider": "local"},
     }
     cases: list[tuple[str, dict, tuple[str, ...], bool]] = [

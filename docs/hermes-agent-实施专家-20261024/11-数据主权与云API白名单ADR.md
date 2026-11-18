@@ -2,7 +2,7 @@
 file: 11-数据主权与云API白名单ADR.md
 description: ADR-001 数据主权决策——完全自控/非共用/本地优先，云 egress 仅限 DeepSeek×2 + GLM×2，preflight 门禁强制执行
 author: AI Tutor <Intelligent Application Implementation Expert>
-version: v1.0.0
+version: v1.1.0
 created: 2026-11-18
 updated: 2026-11-18
 status: accepted
@@ -50,9 +50,11 @@ category: adr
 | Provider | 授权模型 | 端点 |
 | --- | --- | --- |
 | `deepseek` | `deepseek-v4-pro`、`deepseek-flash` | `https://api.deepseek.com/v1` |
-| `zai`（GLM） | `glm-5.2`、`glm-4.5-flash` | `https://api.z.ai/api/paas/v4` |
+| `zai`（GLM） | `glm-5.3`、`glm-5.3-flash` | `https://api.z.ai/api/paas/v4` |
 
-**除此之外的任何云 provider / 模型 / 端点均未授权。** 选择依据：DeepSeek 双模型 = 旗舰（v4-pro）+ 快档（flash）；GLM 双模型 = 旗舰（5.2）+ 快档（4.5-flash），与两家 provider profile 的 `fallback_models` / `default_aux_model` 对齐。
+**除此之外的任何云 provider / 模型 / 端点均未授权。** 选择依据：DeepSeek 双模型 = 旗舰（v4-pro）+ 快档（flash）；GLM 双模型 = 旗舰（5.3）+ 快档（5.3-flash），与两家 provider profile 的目录元数据（上下文 1M / 1.31M）及 zai 的视觉模型（`glm-5.3-flash`）对齐。
+
+> 2026-11-18 修订：GLM 授权对由 `glm-5.2` / `glm-4.5-flash` 更新为 `glm-5.3` / `glm-5.3-flash`（所有者指令）。旧值即时失效。
 
 ### D3 · 凭据只放 `.env`，且只允许两把云钥匙
 
@@ -77,6 +79,18 @@ category: adr
 
 新增云 provider、模型或端点 = 修订本 ADR（追加条目 + 复审记录），并同步更新门禁白名单。**禁止仅为方便而临时加 key。**
 
+### D7 · 页面化配置与路径边界（2026-11-18 追加）
+
+- **模型页「云供应商预设」**：Dashboard `/models` 页提供两个一键预设卡（DeepSeek / GLM）。
+  应用预设只写入 `providers.<id> = {key_env, models}`（**不含密钥、不含端点**，端点由 provider profile 固定），
+  幂等可重复点击；密钥在「环境变量」页填写。预设模型清单与 D2 白名单同源（同一个 `PRESETS` 表）。
+- **会话记忆（长期记忆）路径**：`memory.dir` 可配置，页面入口 = Dashboard `/config`（schema 自动渲染）。
+  空值 = `<HERMES_HOME>/memories`；相对路径**锚定 HERMES_HOME**（profile 不能意外逃逸自家目录）；
+  `~`/绝对路径按原样使用。迁移已有记忆 = 修改前把旧目录内容复制到新目录。
+- **会话库（state.db）路径**：**保持 profile 作用域，不可页面改**。理由：会话库是 profile 的身份载体，
+  运行中重指向会让缓存/路由/多 profile 隔离失效。需要整体迁移时用 `HERMES_HOME`（或 `hermes profile`）
+  搬移整个 profile，而非单独改库路径。
+
 ---
 
 ## 3. 数据边界（Boundary）
@@ -86,7 +100,7 @@ category: adr
 | 数据 | 存储位置 |
 | --- | --- |
 | 会话历史 | `~/.hermes/` 本地 SessionDB |
-| 记忆 / 用户画像 | `~/.hermes/` 本地 |
+| 内存 / 用户画像 | `memory.dir`（默认 `~/.hermes/memories/`，可页面配置） |
 | 技能与技能分片 | 本地仓库 + 本地缓存 |
 | 配置 / 凭据 | `~/.hermes/config.yaml` + `.env` |
 | 日志 / 维护归档 | `~/.hermes/logs/`、`docs/.../logs/` |
@@ -123,6 +137,7 @@ category: adr
 | D4 辅助/STT/fallback | `auxiliary.*`、`stt.provider`、`fallback*` | 门禁：逐项检查 |
 | D5 门禁本身 | `scripts/preflight.sh` | 第 6 步，任一 FAIL 即整体失败 |
 | D6 变更流程 | 本 ADR | 人工复审（新增条目 + 变更记录） |
+| D7 页面化配置 | `web_routers/model_presets.py`、`memory.dir` | 预设置与白名单同源；`memory.dir` 经 ConfigPage schema 暴露；会话库路径保持 profile 作用域 |
 
 ---
 
@@ -162,6 +177,7 @@ category: adr
 | 版本 | 日期 | 说明 |
 | --- | --- | --- |
 | v1.0.0 | 2026-11-18 | 初版：D1-D6 决策、数据边界、执行矩阵、复审条件；落地为 preflight 第 6 门禁 |
+| v1.1.0 | 2026-11-18 | GLM 授权对更新为 `glm-5.3` / `glm-5.3-flash`；新增 D7（模型页预设 + `memory.dir` 页面可配 + 会话库路径边界） |
 
 ---
 
